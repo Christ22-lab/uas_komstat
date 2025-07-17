@@ -1,260 +1,892 @@
 ---
-title: "Dasbor Analisis Data Statistik"
+title: "Dashboard Analisis Data SOVI (Social Vulnerability Index)"
 output: html_document
 runtime: shiny
 ---
 
 ```{r setup, include=FALSE}
-# Chunk ini tidak akan terlihat di output
-# Memanggil semua fungsi dari file pustaka_fungsi.R
+# Load pustaka fungsi
 source("pustaka_fungsi.R")
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 ```
+
 ```{r}
-# Seluruh UI (User Interface) didefinisikan di dalam chunk ini
-dashboardPage(skin = "blue",
-  dashboardHeader(title = "Dashboard Analisis"),
+# UI Dashboard
+ui <- dashboardPage(
+  skin = "blue",
   
+  # Header
+  dashboardHeader(
+    title = "SOVI Analytics Dashboard",
+    titleWidth = 300
+  ),
+  
+  # Sidebar
   dashboardSidebar(
+    width = 300,
     sidebarMenu(
-      id = "tabs",
-      fileInput("main_file", "Unggah Data CSV Anda", accept = ".csv"),
-      menuItem("Beranda", tabName = "beranda", icon = icon("home")),
-      menuItem("Eksplorasi Data", tabName = "eksplorasi", icon = icon("chart-bar")),
-      menuItem("Uji Asumsi", tabName = "asumsi", icon = icon("check-circle")),
-      menuItem("Statistik Inferensia", icon = icon("calculator"),
-               menuSubItem("Uji T Sampel", tabName = "uji_t")
+      id = "sidebar",
+      
+      # Data Source Info
+      div(class = "sidebar-header", style = "padding: 15px; border-bottom: 1px solid #eee;",
+          h4("Data Source", style = "color: #333; margin: 0;"),
+          p("Social Vulnerability Index", style = "color: #666; font-size: 12px; margin: 5px 0 0 0;")
       ),
-      menuItem("Regresi Linear", tabName = "regresi", icon = icon("line-chart"))
+      
+      # Menu Items
+      menuItem("🏠 Dashboard", tabName = "dashboard", icon = icon("tachometer-alt")),
+      menuItem("📊 Data Overview", tabName = "overview", icon = icon("table")),
+      menuItem("🔍 Exploratory Analysis", tabName = "exploration", icon = icon("search")),
+      menuItem("📈 Statistical Analysis", tabName = "statistics", icon = icon("chart-line")),
+      menuItem("🎯 Advanced Analytics", icon = icon("brain"),
+               menuSubItem("PCA Analysis", tabName = "pca"),
+               menuSubItem("Cluster Analysis", tabName = "cluster"),
+               menuSubItem("Correlation Analysis", tabName = "correlation")
+      ),
+      menuItem("📋 Reports", tabName = "reports", icon = icon("file-alt")),
+      
+      # Data Status
+      div(class = "sidebar-footer", style = "position: absolute; bottom: 20px; left: 20px; right: 20px;",
+          div(id = "data-status", class = "alert alert-info", style = "margin: 0; padding: 10px; font-size: 12px;",
+              "Loading data...",
+              br(),
+              div(class = "progress progress-xs", style = "margin: 5px 0;",
+                  div(class = "progress-bar progress-bar-striped active", 
+                      style = "width: 100%; animation: progress-bar-stripes 2s linear infinite;")
+              )
+          )
+      )
     )
   ),
   
+  # Body
   dashboardBody(
+    # Custom CSS
+    get_modern_css(),
+    
+    # Loading overlay
+    div(id = "loading-overlay", 
+        style = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 9999; display: flex; align-items: center; justify-content: center;",
+        div(class = "spinner"),
+        div(style = "margin-left: 20px; font-size: 16px; color: #666;", "Loading SOVI data...")
+    ),
+    
+    # Tab Items
     tabItems(
-      # 1. BERANDA
-      tabItem("beranda",
-              h2("Selamat Datang di Dasbor Analisis Data Interaktif"),
-              box(width=12, title="Tentang Dasbor", status="primary", solidHeader=TRUE,
-                  p("Dasbor ini dirancang untuk memfasilitasi analisis data. Silakan unggah dataset Anda dalam format CSV menggunakan tombol di sidebar kiri untuk memulai.")
-              ),
-              h3("Data yang Anda Unggah:"),
-              DTOutput("tabel_data_awal")
+      # Dashboard Tab
+      tabItem(tabName = "dashboard",
+        fluidRow(
+          column(12,
+            h1("Social Vulnerability Index (SOVI) Analytics", 
+               style = "color: #1e293b; font-weight: 600; margin-bottom: 30px;")
+          )
+        ),
+        
+        # Key Metrics
+        fluidRow(
+          column(3, withSpinner(valueBoxOutput("total_districts"))),
+          column(3, withSpinner(valueBoxOutput("avg_poverty"))),
+          column(3, withSpinner(valueBoxOutput("avg_population"))),
+          column(3, withSpinner(valueBoxOutput("data_completeness")))
+        ),
+        
+        # Charts Row
+        fluidRow(
+          column(6,
+            box(title = "Poverty Rate Distribution", status = "primary", solidHeader = TRUE, width = NULL,
+                withSpinner(plotlyOutput("poverty_dist_plot"))
+            )
+          ),
+          column(6,
+            box(title = "Population vs Poverty", status = "info", solidHeader = TRUE, width = NULL,
+                withSpinner(plotlyOutput("pop_poverty_plot"))
+            )
+          )
+        ),
+        
+        # Map and Summary
+        fluidRow(
+          column(8,
+            box(title = "Geographic Distribution", status = "success", solidHeader = TRUE, width = NULL,
+                withSpinner(leafletOutput("sovi_map", height = "400px"))
+            )
+          ),
+          column(4,
+            box(title = "Dataset Information", status = "warning", solidHeader = TRUE, width = NULL,
+                withSpinner(verbatimTextOutput("dataset_info"))
+            )
+          )
+        )
       ),
       
-      # 2. EKSPLORASI DATA
-      tabItem("eksplorasi",
-              fluidRow(
-                box(width=4, title="Pengaturan", status="primary", solidHeader=TRUE,
-                    uiOutput("pilih_var_eksplorasi_ui"),
-                    selectInput("jenis_plot", "Pilih Jenis Plot", choices = c("Histogram", "Boxplot")),
-                    downloadButton("download_plot_eksplorasi", "Unduh Plot")
+      # Data Overview Tab
+      tabItem(tabName = "overview",
+        fluidRow(
+          column(12,
+            h2("Data Overview", style = "color: #1e293b; margin-bottom: 20px;")
+          )
+        ),
+        
+        fluidRow(
+          column(12,
+            box(title = "SOVI Dataset", status = "primary", solidHeader = TRUE, width = NULL,
+                withSpinner(DT::dataTableOutput("sovi_table"))
+            )
+          )
+        ),
+        
+        fluidRow(
+          column(6,
+            box(title = "Variable Descriptions", status = "info", solidHeader = TRUE, width = NULL,
+                withSpinner(DT::dataTableOutput("variable_descriptions"))
+            )
+          ),
+          column(6,
+            box(title = "Data Summary Statistics", status = "success", solidHeader = TRUE, width = NULL,
+                withSpinner(DT::dataTableOutput("summary_stats"))
+            )
+          )
+        )
+      ),
+      
+      # Exploratory Analysis Tab
+      tabItem(tabName = "exploration",
+        fluidRow(
+          column(12,
+            h2("Exploratory Data Analysis", style = "color: #1e293b; margin-bottom: 20px;")
+          )
+        ),
+        
+        fluidRow(
+          column(4,
+            box(title = "Analysis Controls", status = "primary", solidHeader = TRUE, width = NULL,
+                selectInput("explore_variable", "Select Variable:", choices = NULL),
+                selectInput("plot_type", "Plot Type:", 
+                           choices = c("Histogram" = "histogram", 
+                                     "Box Plot" = "boxplot",
+                                     "Density Plot" = "density",
+                                     "Violin Plot" = "violin")),
+                checkboxInput("show_outliers", "Show Outliers", value = TRUE),
+                downloadButton("download_plot", "Download Plot", class = "btn-success")
+            )
+          ),
+          column(8,
+            box(title = "Visualization", status = "info", solidHeader = TRUE, width = NULL,
+                withSpinner(plotlyOutput("exploration_plot", height = "400px"))
+            )
+          )
+        ),
+        
+        fluidRow(
+          column(12,
+            box(title = "Statistical Summary", status = "warning", solidHeader = TRUE, width = NULL,
+                withSpinner(verbatimTextOutput("variable_summary"))
+            )
+          )
+        )
+      ),
+      
+      # Statistical Analysis Tab
+      tabItem(tabName = "statistics",
+        fluidRow(
+          column(12,
+            h2("Statistical Analysis", style = "color: #1e293b; margin-bottom: 20px;")
+          )
+        ),
+        
+        fluidRow(
+          column(4,
+            box(title = "Test Configuration", status = "primary", solidHeader = TRUE, width = NULL,
+                selectInput("test_type", "Statistical Test:",
+                           choices = c("Normality Test" = "normality",
+                                     "Correlation Test" = "correlation",
+                                     "T-Test" = "ttest")),
+                conditionalPanel(
+                  condition = "input.test_type == 'normality'",
+                  selectInput("norm_variable", "Select Variable:", choices = NULL)
                 ),
-                box(width=8, title="Hasil Eksplorasi", status="warning", solidHeader=TRUE,
-                    tabsetPanel(
-                      tabPanel("Statistik Deskriptif", verbatimTextOutput("statistik_deskriptif")),
-                      tabPanel("Visualisasi", plotOutput("plot_eksplorasi"))
-                    )
-                )
-              )
-      ),
-      
-      # 3. UJI ASUMSI
-      tabItem("asumsi",
-              fluidRow(
-                 box(width=4, title="Pengaturan", status="primary", solidHeader=TRUE,
-                     h4("Uji Normalitas"),
-                     uiOutput("pilih_var_normalitas_ui"),
-                     actionButton("run_normalitas", "Jalankan"),
-                     hr(),
-                     h4("Uji Homogenitas"),
-                     uiOutput("pilih_var_homogenitas_ui"),
-                     uiOutput("pilih_grup_homogenitas_ui"),
-                     actionButton("run_homogenitas", "Jalankan")
-                 ),
-                 box(width=8, title="Hasil Uji Asumsi", status="warning", solidHeader=TRUE,
-                     h4("Hasil Uji Normalitas (Shapiro-Wilk)"),
-                     verbatimTextOutput("hasil_normalitas"),
-                     verbatimTextOutput("interpretasi_normalitas"),
-                     hr(),
-                     h4("Hasil Uji Homogenitas (Levene)"),
-                     verbatimTextOutput("hasil_homogenitas"),
-                     verbatimTextOutput("interpretasi_homogenitas")
-                 )
-              )
-      ),
-      
-      # 4. UJI T
-      tabItem("uji_t",
-              fluidRow(
-                box(width=4, title="Uji T Satu Sampel", status="primary", solidHeader=TRUE,
-                    uiOutput("pilih_var_t1_ui"),
-                    numericInput("mu_t1", "Nilai Hipotesis (μ₀)", value=0),
-                    actionButton("run_t1", "Jalankan Uji T"),
-                    downloadButton("download_hasil_t1", "Unduh Hasil")
+                conditionalPanel(
+                  condition = "input.test_type == 'correlation'",
+                  selectInput("corr_var1", "Variable 1:", choices = NULL),
+                  selectInput("corr_var2", "Variable 2:", choices = NULL)
                 ),
-                box(width=8, title="Hasil Uji T Satu Sampel", status="warning", solidHeader=TRUE,
-                    verbatimTextOutput("hasil_t1"),
-                    verbatimTextOutput("interpretasi_t1")
-                )
-              )
+                conditionalPanel(
+                  condition = "input.test_type == 'ttest'",
+                  selectInput("ttest_variable", "Test Variable:", choices = NULL),
+                  numericInput("ttest_mu", "Test Value (μ):", value = 0)
+                ),
+                actionButton("run_test", "Run Test", class = "btn-success")
+            )
+          ),
+          column(8,
+            box(title = "Test Results", status = "info", solidHeader = TRUE, width = NULL,
+                withSpinner(verbatimTextOutput("test_results"))
+            )
+          )
+        ),
+        
+        fluidRow(
+          column(12,
+            box(title = "Interpretation", status = "warning", solidHeader = TRUE, width = NULL,
+                withSpinner(verbatimTextOutput("test_interpretation"))
+            )
+          )
+        )
       ),
       
-      # 5. REGRESI
-      tabItem("regresi",
-              fluidRow(
-                box(width=4, title="Pengaturan Model Regresi", status="primary", solidHeader=TRUE,
-                    uiOutput("pilih_var_dependen_ui"),
-                    uiOutput("pilih_var_independen_ui"),
-                    actionButton("run_regresi", "Bangun Model"),
-                    downloadButton("download_plot_regresi", "Unduh Plot Diagnostik")
+      # PCA Tab
+      tabItem(tabName = "pca",
+        fluidRow(
+          column(12,
+            h2("Principal Component Analysis", style = "color: #1e293b; margin-bottom: 20px;")
+          )
+        ),
+        
+        fluidRow(
+          column(4,
+            box(title = "PCA Settings", status = "primary", solidHeader = TRUE, width = NULL,
+                checkboxInput("pca_scale", "Scale Variables", value = TRUE),
+                numericInput("pca_components", "Number of Components:", value = 5, min = 2, max = 10),
+                actionButton("run_pca", "Run PCA", class = "btn-success"),
+                br(), br(),
+                downloadButton("download_pca", "Download Results", class = "btn-info")
+            )
+          ),
+          column(8,
+            box(title = "PCA Results", status = "info", solidHeader = TRUE, width = NULL,
+                withSpinner(plotOutput("pca_plot", height = "400px"))
+            )
+          )
+        ),
+        
+        fluidRow(
+          column(6,
+            box(title = "Eigenvalues", status = "success", solidHeader = TRUE, width = NULL,
+                withSpinner(DT::dataTableOutput("pca_eigenvalues"))
+            )
+          ),
+          column(6,
+            box(title = "Variable Contributions", status = "warning", solidHeader = TRUE, width = NULL,
+                withSpinner(DT::dataTableOutput("pca_contributions"))
+            )
+          )
+        ),
+        
+        fluidRow(
+          column(12,
+            box(title = "PCA Interpretation", status = "primary", solidHeader = TRUE, width = NULL,
+                withSpinner(verbatimTextOutput("pca_interpretation"))
+            )
+          )
+        )
+      ),
+      
+      # Cluster Analysis Tab
+      tabItem(tabName = "cluster",
+        fluidRow(
+          column(12,
+            h2("Cluster Analysis", style = "color: #1e293b; margin-bottom: 20px;")
+          )
+        ),
+        
+        fluidRow(
+          column(4,
+            box(title = "Clustering Settings", status = "primary", solidHeader = TRUE, width = NULL,
+                selectInput("cluster_method", "Method:",
+                           choices = c("K-Means" = "kmeans", "Hierarchical" = "hierarchical")),
+                numericInput("cluster_k", "Number of Clusters:", value = 3, min = 2, max = 8),
+                actionButton("run_cluster", "Run Clustering", class = "btn-success"),
+                br(), br(),
+                downloadButton("download_cluster", "Download Results", class = "btn-info")
+            )
+          ),
+          column(8,
+            box(title = "Cluster Visualization", status = "info", solidHeader = TRUE, width = NULL,
+                withSpinner(plotOutput("cluster_plot", height = "400px"))
+            )
+          )
+        ),
+        
+        fluidRow(
+          column(6,
+            box(title = "Cluster Summary", status = "success", solidHeader = TRUE, width = NULL,
+                withSpinner(DT::dataTableOutput("cluster_summary"))
+            )
+          ),
+          column(6,
+            box(title = "Cluster Interpretation", status = "warning", solidHeader = TRUE, width = NULL,
+                withSpinner(verbatimTextOutput("cluster_interpretation"))
+            )
+          )
+        )
+      ),
+      
+      # Correlation Analysis Tab
+      tabItem(tabName = "correlation",
+        fluidRow(
+          column(12,
+            h2("Correlation Analysis", style = "color: #1e293b; margin-bottom: 20px;")
+          )
+        ),
+        
+        fluidRow(
+          column(4,
+            box(title = "Correlation Settings", status = "primary", solidHeader = TRUE, width = NULL,
+                selectInput("corr_method", "Method:",
+                           choices = c("Pearson" = "pearson", "Spearman" = "spearman", "Kendall" = "kendall")),
+                numericInput("corr_threshold", "Significance Threshold:", value = 0.05, min = 0.01, max = 0.1, step = 0.01),
+                actionButton("run_correlation", "Run Analysis", class = "btn-success"),
+                br(), br(),
+                downloadButton("download_correlation", "Download Matrix", class = "btn-info")
+            )
+          ),
+          column(8,
+            box(title = "Correlation Heatmap", status = "info", solidHeader = TRUE, width = NULL,
+                withSpinner(plotOutput("correlation_plot", height = "400px"))
+            )
+          )
+        ),
+        
+        fluidRow(
+          column(12,
+            box(title = "Correlation Matrix", status = "success", solidHeader = TRUE, width = NULL,
+                withSpinner(DT::dataTableOutput("correlation_table"))
+            )
+          )
+        )
+      ),
+      
+      # Reports Tab
+      tabItem(tabName = "reports",
+        fluidRow(
+          column(12,
+            h2("Analysis Reports", style = "color: #1e293b; margin-bottom: 20px;")
+          )
+        ),
+        
+        fluidRow(
+          column(6,
+            box(title = "Generate Report", status = "primary", solidHeader = TRUE, width = NULL,
+                selectInput("report_type", "Report Type:",
+                           choices = c("Complete Analysis" = "complete",
+                                     "Exploratory Analysis" = "exploratory",
+                                     "Statistical Summary" = "statistical")),
+                selectInput("report_format", "Format:",
+                           choices = c("PDF" = "pdf", "HTML" = "html", "Word" = "docx")),
+                textInput("report_title", "Report Title:", value = "SOVI Analysis Report"),
+                downloadButton("generate_report", "Generate Report", class = "btn-success")
+            )
+          ),
+          column(6,
+            box(title = "Export Data", status = "info", solidHeader = TRUE, width = NULL,
+                h4("Available Datasets:"),
+                downloadButton("export_sovi", "Export SOVI Data", class = "btn-info"),
+                br(), br(),
+                downloadButton("export_distance", "Export Distance Matrix", class = "btn-info"),
+                br(), br(),
+                downloadButton("export_analysis", "Export Analysis Results", class = "btn-warning"),
+                br(), br(),
+                h4("Cache Management:"),
+                actionButton("clear_cache", "Clear Cache", class = "btn btn-warning", 
+                           style = "margin: 5px;"),
+                textOutput("cache_status_text")
+            )
+          )
+        ),
+        
+        fluidRow(
+          column(12,
+            box(title = "Data Citation", status = "success", solidHeader = TRUE, width = NULL,
+                h4("How to Cite This Data:"),
+                p("Please cite the original data source when using this dataset in your research:"),
+                tags$blockquote(
+                  "Social Vulnerability Index (SOVI) Dataset for Indonesian Districts. ",
+                  "Available at: https://www.sciencedirect.com/science/article/pii/S2352340921010180"
                 ),
-                box(width=8, title="Hasil Regresi Linear Berganda", status="warning", solidHeader=TRUE,
-                    tabsetPanel(
-                       tabPanel("Ringkasan Model", verbatimTextOutput("hasil_regresi")),
-                       tabPanel("Plot Diagnostik", plotOutput("plot_regresi"))
-                    )
-                )
-              )
+                h4("Metadata:"),
+                verbatimTextOutput("metadata_info")
+            )
+          )
+        )
       )
     )
   )
 )
-```
 
+# Server
+server <- function(input, output, session) {
+  # Reactive values
+  values <- reactiveValues(
+    sovi_data = NULL,
+    distance_data = NULL,
+    pca_result = NULL,
+    cluster_result = NULL,
+    correlation_result = NULL
+  )
+  
+  # Load data on startup (optimized)
+  observe({
+    # Load SOVI data dengan caching (lebih cepat)
+    values$sovi_data <- load_data_with_progress(session)
+    
+    # Distance matrix di-load on-demand (tidak saat startup)
+    values$distance_data <- NULL
+    
+    # Update UI elements
+    if (!is.null(values$sovi_data)) {
+      numeric_vars <- names(values$sovi_data)[sapply(values$sovi_data, is.numeric)]
+      
+      updateSelectInput(session, "explore_variable", choices = numeric_vars)
+      updateSelectInput(session, "norm_variable", choices = numeric_vars)
+      updateSelectInput(session, "corr_var1", choices = numeric_vars)
+      updateSelectInput(session, "corr_var2", choices = numeric_vars)
+      updateSelectInput(session, "ttest_variable", choices = numeric_vars)
+      
+      # Update data status dengan info cache
+      cache_status <- check_cache_status()
+      cache_info <- if (cache_status$sovi_cached) " (cached)" else ""
+      
+      output$data_status <- renderUI({
+        div(class = "alert alert-success", style = "margin: 0; padding: 10px; font-size: 12px;",
+            paste("Data loaded:", nrow(values$sovi_data), "districts", cache_info)
+        )
+      })
+      
+      # Hide loading overlay
+      runjs("document.getElementById('loading-overlay').style.display = 'none';")
+    } else {
+      output$data_status <- renderUI({
+        div(class = "alert alert-danger", style = "margin: 0; padding: 10px; font-size: 12px;",
+            "Failed to load data"
+        )
+      })
+    }
+  })
+  
+  # Dashboard outputs
+  output$total_districts <- renderValueBox({
+    valueBox(
+      value = if (!is.null(values$sovi_data)) nrow(values$sovi_data) else "Loading...",
+      subtitle = "Total Districts",
+      icon = icon("map"),
+      color = "blue"
+    )
+  })
+  
+  output$avg_poverty <- renderValueBox({
+    valueBox(
+      value = if (!is.null(values$sovi_data)) paste0(round(mean(values$sovi_data$POVERTY, na.rm = TRUE), 1), "%") else "Loading...",
+      subtitle = "Average Poverty Rate",
+      icon = icon("users"),
+      color = "red"
+    )
+  })
+  
+  output$avg_population <- renderValueBox({
+    valueBox(
+      value = if (!is.null(values$sovi_data)) format(round(mean(values$sovi_data$POPULATION, na.rm = TRUE)), big.mark = ",") else "Loading...",
+      subtitle = "Average Population",
+      icon = icon("home"),
+      color = "green"
+    )
+  })
+  
+  output$data_completeness <- renderValueBox({
+    completeness <- if (!is.null(values$sovi_data)) {
+      round((1 - sum(is.na(values$sovi_data)) / (nrow(values$sovi_data) * ncol(values$sovi_data))) * 100, 1)
+    } else 0
+    
+    valueBox(
+      value = paste0(completeness, "%"),
+      subtitle = "Data Completeness",
+      icon = icon("check-circle"),
+      color = "yellow"
+    )
+  })
+  
+  # Dashboard plots
+  output$poverty_dist_plot <- renderPlotly({
+    if (is.null(values$sovi_data)) return(NULL)
+    
+    p <- ggplot(values$sovi_data, aes(x = POVERTY)) +
+      geom_histogram(bins = 30, fill = "#3b82f6", alpha = 0.7, color = "white") +
+      theme_modern() +
+      labs(title = "Distribution of Poverty Rates",
+           x = "Poverty Rate (%)",
+           y = "Frequency")
+    
+    ggplotly(p)
+  })
+  
+  output$pop_poverty_plot <- renderPlotly({
+    if (is.null(values$sovi_data)) return(NULL)
+    
+    p <- ggplot(values$sovi_data, aes(x = POPULATION, y = POVERTY)) +
+      geom_point(alpha = 0.6, color = "#10b981") +
+      geom_smooth(method = "lm", se = TRUE, color = "#ef4444") +
+      theme_modern() +
+      labs(title = "Population vs Poverty Rate",
+           x = "Population",
+           y = "Poverty Rate (%)")
+    
+    ggplotly(p)
+  })
+  
+  output$sovi_map <- renderLeaflet({
+    if (is.null(values$sovi_data)) return(NULL)
+    
+    # Create a simple map (since we don't have coordinates in this dataset)
+    leaflet() %>%
+      addTiles() %>%
+      setView(lng = 118, lat = -2, zoom = 5) %>%
+      addMarkers(lng = 118, lat = -2, 
+                popup = paste("SOVI Dataset<br>", nrow(values$sovi_data), "districts"))
+  })
+  
+  output$dataset_info <- renderText({
+    if (is.null(values$sovi_data)) return("Loading...")
+    
+    metadata <- get_metadata_info()
+    paste(
+      "Dataset: ", metadata$title, "\n",
+      "Source: ", metadata$source, "\n",
+      "Description: ", metadata$description, "\n",
+      "Variables: ", ncol(values$sovi_data), "\n",
+      "Observations: ", nrow(values$sovi_data), "\n",
+      "Missing Values: ", sum(is.na(values$sovi_data))
+    )
+  })
+  
+  # Data Overview outputs
+  output$sovi_table <- DT::renderDataTable({
+    if (is.null(values$sovi_data)) return(NULL)
+    create_beautiful_table(values$sovi_data, "SOVI Dataset")
+  })
+  
+  output$variable_descriptions <- DT::renderDataTable({
+    metadata <- get_metadata_info()
+    var_df <- data.frame(
+      Variable = names(metadata$variables),
+      Description = unlist(metadata$variables),
+      stringsAsFactors = FALSE
+    )
+    create_beautiful_table(var_df, "Variable Descriptions")
+  })
+  
+  output$summary_stats <- DT::renderDataTable({
+    if (is.null(values$sovi_data)) return(NULL)
+    summary_data <- comprehensive_summary(values$sovi_data)
+    create_beautiful_table(summary_data, "Summary Statistics")
+  })
+  
+  # Exploration outputs
+  output$exploration_plot <- renderPlotly({
+    if (is.null(values$sovi_data) || is.null(input$explore_variable)) return(NULL)
+    
+    data <- values$sovi_data
+    var_name <- input$explore_variable
+    
+    if (input$plot_type == "histogram") {
+      p <- ggplot(data, aes_string(x = var_name)) +
+        geom_histogram(bins = 30, fill = "#3b82f6", alpha = 0.7, color = "white") +
+        theme_modern() +
+        labs(title = paste("Histogram of", var_name), x = var_name, y = "Frequency")
+    } else if (input$plot_type == "boxplot") {
+      p <- ggplot(data, aes_string(y = var_name)) +
+        geom_boxplot(fill = "#10b981", alpha = 0.7, outlier.color = if(input$show_outliers) "red" else NA) +
+        theme_modern() +
+        labs(title = paste("Box Plot of", var_name), y = var_name)
+    } else if (input$plot_type == "density") {
+      p <- ggplot(data, aes_string(x = var_name)) +
+        geom_density(fill = "#f59e0b", alpha = 0.7) +
+        theme_modern() +
+        labs(title = paste("Density Plot of", var_name), x = var_name, y = "Density")
+    } else if (input$plot_type == "violin") {
+      p <- ggplot(data, aes_string(x = '""', y = var_name)) +
+        geom_violin(fill = "#8b5cf6", alpha = 0.7) +
+        theme_modern() +
+        labs(title = paste("Violin Plot of", var_name), x = "", y = var_name)
+    }
+    
+    ggplotly(p)
+  })
+  
+  output$variable_summary <- renderText({
+    if (is.null(values$sovi_data) || is.null(input$explore_variable)) return("")
+    
+    var_data <- values$sovi_data[[input$explore_variable]]
+    paste(
+      "Variable: ", input$explore_variable, "\n",
+      "Mean: ", round(mean(var_data, na.rm = TRUE), 3), "\n",
+      "Median: ", round(median(var_data, na.rm = TRUE), 3), "\n",
+      "Standard Deviation: ", round(sd(var_data, na.rm = TRUE), 3), "\n",
+      "Min: ", round(min(var_data, na.rm = TRUE), 3), "\n",
+      "Max: ", round(max(var_data, na.rm = TRUE), 3), "\n",
+      "Missing Values: ", sum(is.na(var_data)), "\n",
+      "Skewness: ", round(e1071::skewness(var_data, na.rm = TRUE), 3), "\n",
+      "Kurtosis: ", round(e1071::kurtosis(var_data, na.rm = TRUE), 3)
+    )
+  })
+  
+  # Statistical Analysis
+  test_result <- eventReactive(input$run_test, {
+    if (is.null(values$sovi_data)) return(NULL)
+    
+    if (input$test_type == "normality") {
+      var_data <- values$sovi_data[[input$norm_variable]]
+      if (length(var_data) <= 5000) {
+        shapiro.test(var_data)
+      } else {
+        ks.test(var_data, "pnorm", mean(var_data, na.rm = TRUE), sd(var_data, na.rm = TRUE))
+      }
+    } else if (input$test_type == "correlation") {
+      cor.test(values$sovi_data[[input$corr_var1]], values$sovi_data[[input$corr_var2]])
+    } else if (input$test_type == "ttest") {
+      t.test(values$sovi_data[[input$ttest_variable]], mu = input$ttest_mu)
+    }
+  })
+  
+  output$test_results <- renderText({
+    result <- test_result()
+    if (is.null(result)) return("")
+    
+    if (input$test_type == "normality") {
+      paste("Normality Test Results:\n",
+            "Statistic: ", round(result$statistic, 4), "\n",
+            "P-value: ", round(result$p.value, 4), "\n",
+            "Method: ", result$method)
+    } else if (input$test_type == "correlation") {
+      paste("Correlation Test Results:\n",
+            "Correlation: ", round(result$estimate, 4), "\n",
+            "P-value: ", round(result$p.value, 4), "\n",
+            "95% CI: [", round(result$conf.int[1], 4), ", ", round(result$conf.int[2], 4), "]")
+    } else if (input$test_type == "ttest") {
+      paste("One-Sample T-Test Results:\n",
+            "T-statistic: ", round(result$statistic, 4), "\n",
+            "P-value: ", round(result$p.value, 4), "\n",
+            "Mean: ", round(result$estimate, 4), "\n",
+            "95% CI: [", round(result$conf.int[1], 4), ", ", round(result$conf.int[2], 4), "]")
+    }
+  })
+  
+  output$test_interpretation <- renderText({
+    result <- test_result()
+    if (is.null(result)) return("")
+    
+    if (input$test_type == "normality") {
+      if (result$p.value > 0.05) {
+        "Interpretation: Data appears to be normally distributed (p > 0.05)"
+      } else {
+        "Interpretation: Data does not appear to be normally distributed (p ≤ 0.05)"
+      }
+    } else if (input$test_type == "correlation") {
+      if (result$p.value > 0.05) {
+        "Interpretation: No significant correlation between variables (p > 0.05)"
+      } else {
+        strength <- if (abs(result$estimate) > 0.7) "strong" else if (abs(result$estimate) > 0.3) "moderate" else "weak"
+        direction <- if (result$estimate > 0) "positive" else "negative"
+        paste("Interpretation: Significant", strength, direction, "correlation (p ≤ 0.05)")
+      }
+    } else if (input$test_type == "ttest") {
+      if (result$p.value > 0.05) {
+        paste("Interpretation: No significant difference from", input$ttest_mu, "(p > 0.05)")
+      } else {
+        paste("Interpretation: Significant difference from", input$ttest_mu, "(p ≤ 0.05)")
+      }
+    }
+  })
+  
+  # PCA Analysis
+  pca_result <- eventReactive(input$run_pca, {
+    if (is.null(values$sovi_data)) return(NULL)
+    perform_pca(values$sovi_data, scale = input$pca_scale)
+  })
+  
+  output$pca_plot <- renderPlot({
+    result <- pca_result()
+    if (is.null(result)) return(NULL)
+    create_pca_plot(result, values$sovi_data)
+  })
+  
+  output$pca_eigenvalues <- DT::renderDataTable({
+    result <- pca_result()
+    if (is.null(result)) return(NULL)
+    
+    eig_df <- data.frame(
+      Component = paste0("PC", 1:nrow(result$eig)),
+      Eigenvalue = result$eig[,1],
+      Variance_Percent = result$eig[,2],
+      Cumulative_Percent = result$eig[,3]
+    )
+    create_beautiful_table(eig_df, "PCA Eigenvalues")
+  })
+  
+  output$pca_contributions <- DT::renderDataTable({
+    result <- pca_result()
+    if (is.null(result)) return(NULL)
+    
+    contrib_df <- as.data.frame(result$var$contrib[, 1:min(5, ncol(result$var$contrib))])
+    contrib_df$Variable <- rownames(contrib_df)
+    contrib_df <- contrib_df[, c("Variable", setdiff(names(contrib_df), "Variable"))]
+    
+    create_beautiful_table(contrib_df, "Variable Contributions")
+  })
+  
+  output$pca_interpretation <- renderText({
+    result <- pca_result()
+    if (is.null(result)) return("")
+    interpret_pca(result)
+  })
+  
+  # Cluster Analysis
+  cluster_result <- eventReactive(input$run_cluster, {
+    if (is.null(values$sovi_data)) return(NULL)
+    perform_clustering(values$sovi_data, k = input$cluster_k, method = input$cluster_method)
+  })
+  
+  output$cluster_plot <- renderPlot({
+    result <- cluster_result()
+    if (is.null(result)) return(NULL)
+    create_cluster_plot(result, values$sovi_data)
+  })
+  
+  output$cluster_summary <- DT::renderDataTable({
+    result <- cluster_result()
+    if (is.null(result)) return(NULL)
+    
+    if ("cluster" %in% names(result)) {
+      cluster_sizes <- table(result$cluster)
+      summary_df <- data.frame(
+        Cluster = names(cluster_sizes),
+        Size = as.numeric(cluster_sizes),
+        Percentage = round(as.numeric(cluster_sizes) / sum(cluster_sizes) * 100, 1)
+      )
+    } else {
+      cluster_sizes <- table(result$cluster)
+      summary_df <- data.frame(
+        Cluster = names(cluster_sizes),
+        Size = as.numeric(cluster_sizes),
+        Percentage = round(as.numeric(cluster_sizes) / sum(cluster_sizes) * 100, 1)
+      )
+    }
+    
+    create_beautiful_table(summary_df, "Cluster Summary")
+  })
+  
+  output$cluster_interpretation <- renderText({
+    result <- cluster_result()
+    if (is.null(result)) return("")
+    interpret_clustering(result, input$cluster_k)
+  })
+  
+  # Correlation Analysis
+  correlation_result <- eventReactive(input$run_correlation, {
+    if (is.null(values$sovi_data)) return(NULL)
+    perform_correlation(values$sovi_data, method = input$corr_method)
+  })
+  
+  output$correlation_plot <- renderPlot({
+    result <- correlation_result()
+    if (is.null(result)) return(NULL)
+    create_correlation_plot(result)
+  })
+  
+  output$correlation_table <- DT::renderDataTable({
+    result <- correlation_result()
+    if (is.null(result)) return(NULL)
+    
+    cor_df <- as.data.frame(result)
+    cor_df$Variable <- rownames(cor_df)
+    cor_df <- cor_df[, c("Variable", setdiff(names(cor_df), "Variable"))]
+    
+    create_beautiful_table(cor_df, "Correlation Matrix")
+  })
+  
+  # Download handlers
+  output$download_plot <- downloadHandler(
+    filename = function() {
+      paste0("sovi_plot_", input$explore_variable, "_", Sys.Date(), ".png")
+    },
+    content = function(file) {
+      ggsave(file, plot = last_plot(), width = 10, height = 8, dpi = 300)
+    }
+  )
+  
+  output$export_sovi <- downloadHandler(
+    filename = function() { paste0("sovi_data_", Sys.Date(), ".csv") },
+    content = function(file) {
+      write.csv(values$sovi_data, file, row.names = FALSE)
+    }
+  )
+  
+  output$export_distance <- downloadHandler(
+    filename = function() { paste0("distance_matrix_", Sys.Date(), ".csv") },
+    content = function(file) {
+      # Lazy loading distance matrix dengan progress
+      if (is.null(values$distance_data)) {
+        showNotification("Loading distance matrix (4.2 MB)...", 
+                        type = "message", duration = 3)
+        
+        withProgress(message = 'Preparing distance matrix...', value = 0, {
+          incProgress(0.5, detail = "Downloading data...")
+          values$distance_data <- load_distance_data_lazy()
+          incProgress(1, detail = "Complete!")
+        })
+        
+        if (!is.null(values$distance_data)) {
+          showNotification("Distance matrix loaded successfully!", 
+                          type = "message", duration = 2)
+        } else {
+          showNotification("Failed to load distance matrix!", 
+                          type = "error", duration = 5)
+          return()
+        }
+      }
+      
+      write.csv(values$distance_data, file, row.names = FALSE)
+    }
+  )
+  
+  output$metadata_info <- renderText({
+    metadata <- get_metadata_info()
+    cache_status <- check_cache_status()
+    
+    cache_info <- paste(
+      "Cache Status:",
+      paste("- SOVI Data:", ifelse(cache_status$sovi_cached, "Cached ✓", "Not cached")),
+      paste("- Distance Matrix:", ifelse(cache_status$distance_cached, "Cached ✓", "Not cached")),
+      paste("- Cache Size:", round(cache_status$cache_size / 1024 / 1024, 2), "MB"),
+      sep = "\n"
+    )
+    
+    paste(
+      "Title: ", metadata$title, "\n",
+      "Source: ", metadata$source, "\n",
+      "Description: ", metadata$description, "\n",
+      "Variables: ", length(metadata$variables), "\n",
+      "Total Districts: ", metadata$total_districts, "\n",
+      "Data Sizes: SOVI (", metadata$data_size$sovi, "), Distance (", metadata$data_size$distance, ")", "\n\n",
+      cache_info
+    )
+  })
+  
+  # Cache management
+  observeEvent(input$clear_cache, {
+    result <- clear_cache()
+    if (result) {
+      values$distance_data <- NULL
+      showNotification("Cache cleared successfully!", type = "message", duration = 3)
+    } else {
+      showNotification("No cache to clear!", type = "warning", duration = 3)
+    }
+  })
+  
+  output$cache_status_text <- renderText({
+    cache_status <- check_cache_status()
+    paste("Cache size:", round(cache_status$cache_size / 1024 / 1024, 2), "MB")
+  })
+}
 
-```{r}
-# ===== DATA REAKTIF =====
-data_input <- reactive({
-  req(input$main_file)
-  read.csv(input$main_file$datapath, stringsAsFactors = TRUE)
-})
-
-output$tabel_data_awal <- renderDT({
-  datatable(data_input(), options = list(scrollX = TRUE, pageLength = 5))
-})
-
-# Obyek untuk menampung nama kolom numerik dan kategorik
-kolom_numerik <- reactive(names(data_input())[sapply(data_input(), is.numeric)])
-kolom_kategorik <- reactive(names(data_input())[sapply(data_input(), is.factor) || sapply(data_input(), is.character)])
-
-
-# ===== RENDER UI DINAMIS =====
-# UI untuk menu Eksplorasi
-output$pilih_var_eksplorasi_ui <- renderUI({
-  selectInput("var_eksplorasi", "Pilih Variabel Numerik", choices = kolom_numerik())
-})
-
-# UI untuk menu Asumsi
-output$pilih_var_normalitas_ui <- renderUI({
-  selectInput("var_normalitas", "Pilih Variabel", choices = kolom_numerik())
-})
-output$pilih_var_homogenitas_ui <- renderUI({
-  selectInput("var_homogenitas", "Variabel Dependen (Numerik)", choices = kolom_numerik())
-})
-output$pilih_grup_homogenitas_ui <- renderUI({
-  selectInput("grup_homogenitas", "Variabel Grup (Kategorik)", choices = kolom_kategorik())
-})
-
-# UI untuk menu Uji T
-output$pilih_var_t1_ui <- renderUI({
-  selectInput("var_t1", "Pilih Variabel", choices = kolom_numerik())
-})
-
-# UI untuk menu Regresi
-output$pilih_var_dependen_ui <- renderUI({
-  selectInput("var_dependen", "Pilih Variabel Dependen (Y)", choices = kolom_numerik())
-})
-output$pilih_var_independen_ui <- renderUI({
-  selectInput("var_independen", "Pilih Variabel Independen (X)", choices = kolom_numerik(), multiple = TRUE)
-})
-
-
-# ===== LOGIKA SERVER: EKSPLORASI =====
-plot_obj_eksplorasi <- reactive({
-  req(input$var_eksplorasi)
-  p <- ggplot(data_input(), aes_string(x = input$var_eksplorasi)) + theme_light() + labs(x=input$var_eksplorasi)
-  if(input$jenis_plot == "Histogram") {
-    p <- p + geom_histogram(aes(y=..density..), bins=20, fill="skyblue", color="black") + geom_density(alpha=.2, fill="#FF6666")
-  } else { # Boxplot
-    p <- p + geom_boxplot(fill="lightgreen")
-  }
-  p
-})
-output$plot_eksplorasi <- renderPlot({
-  plot_obj_eksplorasi()
-})
-output$statistik_deskriptif <- renderPrint({
-  req(input$var_eksplorasi)
-  summary(data_input()[[input$var_eksplorasi]])
-})
-output$download_plot_eksplorasi <- downloadHandler(
-  filename = function() { paste0("plot_eksplorasi_", input$var_eksplorasi, ".png") },
-  content = function(file) { ggsave(file, plot = plot_obj_eksplorasi(), device = "png") }
-)
-
-
-# ===== LOGIKA SERVER: ASUMSI =====
-# Normalitas
-hasil_norm <- eventReactive(input$run_normalitas, {
-  lakukan_uji_normalitas(data_input()[[input$var_normalitas]])
-})
-output$hasil_normalitas <- renderPrint({ hasil_norm() })
-output$interpretasi_normalitas <- renderPrint({ cat(interpretasi_normalitas(hasil_norm())) })
-
-# Homogenitas
-formula_homogenitas <- eventReactive(input$run_homogenitas, {
-  as.formula(paste(input$var_homogenitas, "~", input$grup_homogenitas))
-})
-hasil_homog <- eventReactive(input$run_homogenitas, {
-  lakukan_uji_homogenitas(data_input(), formula_homogenitas())
-})
-output$hasil_homogenitas <- renderPrint({ hasil_homog() })
-output$interpretasi_homogenitas <- renderPrint({ cat(interpretasi_homogenitas(hasil_homog())) })
-
-
-# ===== LOGIKA SERVER: UJI T =====
-hasil_t1_obj <- eventReactive(input$run_t1, {
-  lakukan_uji_t_1sampel(data_input()[[input$var_t1]], input$mu_t1)
-})
-output$hasil_t1 <- renderPrint({ hasil_t1_obj() })
-output$interpretasi_t1 <- renderPrint({
-  cat(interpretasi_t_1sampel(hasil_t1_obj(), input$mu_t1))
-})
-output$download_hasil_t1 <- downloadHandler(
-  filename = function() { paste0("uji_t_1_sampel_", input$var_t1, ".txt") },
-  content = function(file) {
-    sink(file)
-    print(hasil_t1_obj())
-    cat("\n---\n")
-    cat(interpretasi_t_1sampel(hasil_t1_obj(), input$mu_t1))
-    sink()
-  }
-)
-
-# ===== LOGIKA SERVER: REGRESI =====
-formula_regresi <- eventReactive(input$run_regresi, {
-  req(input$var_independen)
-  as.formula(paste(input$var_dependen, "~", paste(input$var_independen, collapse = "+")))
-})
-model_regresi_obj <- eventReactive(input$run_regresi, {
-  lm(formula_regresi(), data = data_input())
-})
-output$hasil_regresi <- renderPrint({
-  summary(model_regresi_obj())
-})
-plot_regresi_obj <- reactive({
-  plot_diagnostik_regresi(model_regresi_obj())
-})
-output$plot_regresi <- renderPlot({
-  plot_diagnostik_regresi(model_regresi_obj())
-})
-output$download_plot_regresi <- downloadHandler(
-  filename = function() { "plot_diagnostik_regresi.png" },
-  content = function(file) {
-    png(file, width = 800, height = 600)
-    plot_diagnostik_regresi(model_regresi_obj())
-    dev.off()
-  }
-)
-```
+# Run the application
+shinyApp(ui = ui, server = server)
 
