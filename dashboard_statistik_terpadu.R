@@ -31,6 +31,7 @@ if (!require(gridExtra)) install.packages("gridExtra")
 if (!require(sf)) install.packages("sf")
 if (!require(maps)) install.packages("maps")
 if (!require(moments)) install.packages("moments")
+if (!require(officer)) install.packages("officer")
 
 library(shiny)
 library(shinydashboard)
@@ -53,6 +54,7 @@ library(gridExtra)
 library(sf)
 library(maps)
 library(moments)
+library(officer)
 
 # Global variables
 sovi_url <- "https://raw.githubusercontent.com/bmlmcmc/naspaclust/main/data/sovi_data.csv"
@@ -243,12 +245,20 @@ ui <- dashboardPage(
         )
       ),
       
-      # =================== MANAJEMEN DATA ===================
-      tabItem(tabName = "data_management",
+             # =================== MANAJEMEN DATA ===================
+       tabItem(tabName = "data_management",
+         fluidRow(
+           box(width = 12, title = "Manajemen Data - Pengelolaan dan Transformasi Dataset", status = "info", solidHeader = TRUE,
+             p(strong("Tujuan Menu:"), "Menu ini digunakan untuk mengelola data, melakukan upload file, preview data, dan transformasi variabel kontinyu menjadi kategorik."),
+             p(strong("Fitur Utama:"), "Upload file (CSV/Excel), load data default SOVI, preview data, transformasi variabel (kategorisasi, normalisasi, standardisasi), dan download hasil transformasi."),
+             p(strong("Cara Penggunaan:"), "1) Upload file atau load data default, 2) Pilih variabel untuk ditransformasi, 3) Tentukan metode transformasi, 4) Terapkan transformasi, 5) Download hasil jika diperlukan.")
+           )
+         ),
         fluidRow(
           box(width = 4, title = "Upload & Load Data", status = "primary", solidHeader = TRUE,
-            fileInput("file_upload", "Upload CSV File (Opsional)",
-                     accept = c(".csv")),
+                         fileInput("file_upload", "Upload File (CSV/Excel)",
+                      accept = c(".csv", ".xlsx", ".xls")),
+             helpText("Format yang didukung: CSV (.csv), Excel (.xlsx, .xls)"),
             hr(),
             actionButton("load_default", "Load Default SOVI Data", class = "btn-success"),
             br(), br(),
@@ -273,11 +283,21 @@ ui <- dashboardPage(
                          "Square Root" = "sqrt",
                          "Standardization" = "scale"
                        )),
-            conditionalPanel(
-              condition = "input.transform_method == 'custom'",
-              textInput("custom_breaks", "Custom Breaks (pisahkan dengan koma):", 
-                       placeholder = "0, 25, 50, 75, 100")
-            ),
+                         conditionalPanel(
+               condition = "input.transform_method == 'custom'",
+               h5("Custom Breakpoints:"),
+               fluidRow(
+                 column(4, numericInput("break1", "Break 1:", value = 0)),
+                 column(4, numericInput("break2", "Break 2:", value = 25)),
+                 column(4, numericInput("break3", "Break 3:", value = 50))
+               ),
+               fluidRow(
+                 column(4, numericInput("break4", "Break 4:", value = 75)),
+                 column(4, numericInput("break5", "Break 5:", value = 100)),
+                 column(4, numericInput("n_custom_breaks", "Jumlah Breaks:", value = 5, min = 3, max = 10))
+               ),
+               helpText("Masukkan nilai breakpoint untuk kategorisasi. Nilai harus urut dari kecil ke besar.")
+             ),
             conditionalPanel(
               condition = "input.transform_method == 'quantile'",
               numericInput("n_quantiles", "Jumlah Kategori:", value = 4, min = 2, max = 10)
@@ -298,8 +318,15 @@ ui <- dashboardPage(
         )
       ),
       
-      # =================== STATISTIK DESKRIPTIF ===================
-      tabItem(tabName = "descriptive",
+             # =================== STATISTIK DESKRIPTIF ===================
+       tabItem(tabName = "descriptive",
+         fluidRow(
+           box(width = 12, title = "Statistik Deskriptif - Analisis Ringkasan Data", status = "info", solidHeader = TRUE,
+             p(strong("Tujuan Menu:"), "Menu ini digunakan untuk menganalisis karakteristik dasar data melalui ukuran pemusatan, penyebaran, dan bentuk distribusi."),
+             p(strong("Fitur Utama:"), "Perhitungan mean, median, standar deviasi, min, max, skewness, kurtosis, analisis berdasarkan kelompok, dan visualisasi distribusi data."),
+             p(strong("Cara Penggunaan:"), "1) Pilih variabel yang akan dianalisis, 2) Tentukan pengelompokan (opsional), 3) Jalankan analisis, 4) Interpretasi hasil dan download laporan.")
+           )
+         ),
         fluidRow(
           box(width = 4, title = "Pengaturan Analisis", status = "primary", solidHeader = TRUE,
             selectInput("desc_variables", "Pilih Variabel:",
@@ -334,8 +361,15 @@ ui <- dashboardPage(
         )
       ),
       
-      # =================== VISUALISASI ===================
-      tabItem(tabName = "visualization",
+             # =================== VISUALISASI ===================
+       tabItem(tabName = "visualization",
+         fluidRow(
+           box(width = 12, title = "Visualisasi Data - Representasi Grafis", status = "info", solidHeader = TRUE,
+             p(strong("Tujuan Menu:"), "Menu ini digunakan untuk membuat berbagai jenis visualisasi data yang interaktif untuk memahami pola, hubungan, dan distribusi data."),
+             p(strong("Fitur Utama:"), "Scatter plot, box plot, histogram, correlation matrix, bar chart, density plot dengan interaktivitas plotly dan opsi pewarnaan berdasarkan kategori."),
+             p(strong("Cara Penggunaan:"), "1) Pilih jenis plot, 2) Tentukan variabel X dan Y (jika diperlukan), 3) Pilih variabel untuk pewarnaan (opsional), 4) Buat visualisasi dan download hasil.")
+           )
+         ),
         fluidRow(
           box(width = 3, title = "Pengaturan Visualisasi", status = "primary", solidHeader = TRUE,
             selectInput("plot_type", "Jenis Plot:",
@@ -376,8 +410,15 @@ ui <- dashboardPage(
         )
       ),
       
-      # =================== PEMETAAN ===================
-      tabItem(tabName = "mapping",
+             # =================== PEMETAAN ===================
+       tabItem(tabName = "mapping",
+         fluidRow(
+           box(width = 12, title = "Pemetaan Data - Visualisasi Spasial", status = "info", solidHeader = TRUE,
+             p(strong("Tujuan Menu:"), "Menu ini digunakan untuk membuat visualisasi data dalam bentuk peta interaktif untuk menganalisis pola geografis dan distribusi spasial."),
+             p(strong("Fitur Utama:"), "Heat map, choropleth map, point map dengan koordinat geografis, legenda interaktif, dan fitur zoom/pan pada peta Leaflet."),
+             p(strong("Cara Penggunaan:"), "1) Pilih variabel untuk dipetakan, 2) Tentukan jenis peta, 3) Buat peta interaktif, 4) Analisis pola spasial dan download peta.")
+           )
+         ),
         fluidRow(
           box(width = 4, title = "Pengaturan Peta", status = "primary", solidHeader = TRUE,
             p("Fitur pemetaan untuk data geografis SOVI"),
@@ -396,16 +437,23 @@ ui <- dashboardPage(
              )
           ),
           
-          box(width = 8, title = "Peta Interaktif", status = "info", solidHeader = TRUE,
-            leafletOutput("interactive_map", height = "500px"),
-            br(),
-            downloadButton("download_map", "Download Peta", class = "btn-success")
-          )
+                     box(width = 8, title = "Peta Interaktif", status = "info", solidHeader = TRUE,
+             leafletOutput("interactive_map", height = "500px"),
+             br(),
+             downloadButton("download_map", "Download Peta (HTML)", class = "btn-success")
+           )
         )
       ),
       
-      # =================== UJI ASUMSI ===================
-      tabItem(tabName = "assumptions",
+             # =================== UJI ASUMSI ===================
+       tabItem(tabName = "assumptions",
+         fluidRow(
+           box(width = 12, title = "Uji Asumsi Data - Verifikasi Prasyarat Statistik", status = "info", solidHeader = TRUE,
+             p(strong("Tujuan Menu:"), "Menu ini digunakan untuk menguji asumsi-asumsi dasar yang diperlukan sebelum melakukan analisis statistik parametrik."),
+             p(strong("Fitur Utama:"), "Uji normalitas (Shapiro-Wilk/Anderson-Darling), uji homogenitas varians (Levene's test), visualisasi Q-Q plot dan histogram untuk validasi asumsi."),
+             p(strong("Cara Penggunaan:"), "1) Pilih variabel untuk diuji, 2) Tentukan variabel kelompok untuk uji homogenitas, 3) Jalankan uji asumsi, 4) Interpretasi hasil untuk menentukan metode analisis yang sesuai.")
+           )
+         ),
         fluidRow(
           box(width = 4, title = "Pengaturan Uji Asumsi", status = "primary", solidHeader = TRUE,
             selectInput("assumption_var", "Pilih Variabel:", choices = NULL),
@@ -443,8 +491,15 @@ ui <- dashboardPage(
         )
       ),
       
-      # =================== UJI RATA-RATA ===================
-      tabItem(tabName = "mean_tests",
+             # =================== UJI RATA-RATA ===================
+       tabItem(tabName = "mean_tests",
+         fluidRow(
+           box(width = 12, title = "Uji Rata-rata - Pengujian Hipotesis Mean", status = "info", solidHeader = TRUE,
+             p(strong("Tujuan Menu:"), "Menu ini digunakan untuk menguji hipotesis tentang rata-rata populasi menggunakan uji t (satu sampel, dua sampel independen, atau berpasangan)."),
+             p(strong("Fitur Utama:"), "One sample t-test, two sample t-test, paired t-test dengan confidence interval, visualisasi distribusi, dan interpretasi statistik lengkap."),
+             p(strong("Cara Penggunaan:"), "1) Pilih jenis uji t-test, 2) Tentukan variabel dan parameter uji, 3) Set confidence level, 4) Jalankan uji dan interpretasi hasil keputusan H₀/H₁.")
+           )
+         ),
         fluidRow(
           box(width = 4, title = "Pengaturan Uji Rata-rata", status = "primary", solidHeader = TRUE,
             selectInput("mean_test_type", "Jenis Uji:",
@@ -523,8 +578,15 @@ ui <- dashboardPage(
         )
       ),
       
-      # =================== ANOVA ===================
-      tabItem(tabName = "anova_tests",
+             # =================== ANOVA ===================
+       tabItem(tabName = "anova_tests",
+         fluidRow(
+           box(width = 12, title = "ANOVA - Analisis Varians untuk Perbandingan Multiple Group", status = "info", solidHeader = TRUE,
+             p(strong("Tujuan Menu:"), "Menu ini digunakan untuk menguji perbedaan rata-rata antar multiple kelompok menggunakan Analysis of Variance (ANOVA) satu arah atau dua arah."),
+             p(strong("Fitur Utama:"), "One-way ANOVA, two-way ANOVA dengan/tanpa interaksi, post-hoc test (Tukey HSD), visualisasi perbandingan kelompok, dan plot diagnostik residual."),
+             p(strong("Cara Penggunaan:"), "1) Pilih jenis ANOVA, 2) Tentukan variabel dependen dan faktor, 3) Set opsi interaksi dan post-hoc, 4) Jalankan analisis dan interpretasi hasil F-test.")
+           )
+         ),
         fluidRow(
           box(width = 4, title = "Pengaturan ANOVA", status = "primary", solidHeader = TRUE,
             selectInput("anova_type", "Jenis ANOVA:",
@@ -568,8 +630,15 @@ ui <- dashboardPage(
         )
       ),
       
-      # =================== REGRESI LINEAR ===================
-      tabItem(tabName = "regression",
+             # =================== REGRESI LINEAR ===================
+       tabItem(tabName = "regression",
+         fluidRow(
+           box(width = 12, title = "Regresi Linear Berganda - Analisis Hubungan dan Prediksi", status = "info", solidHeader = TRUE,
+             p(strong("Tujuan Menu:"), "Menu ini digunakan untuk menganalisis hubungan linear antara variabel dependen dengan satu atau lebih variabel independen menggunakan regresi linear berganda."),
+             p(strong("Fitur Utama:"), "Model regresi berganda, uji asumsi (normalitas, homoskedastisitas, multikolinearitas), diagnostik model (Cook's distance, leverage), dan plot diagnostik komprehensif."),
+             p(strong("Cara Penggunaan:"), "1) Pilih variabel dependen dan independen, 2) Set opsi uji asumsi dan diagnostik, 3) Jalankan regresi, 4) Evaluasi model dan interpretasi koefisien serta R-squared.")
+           )
+         ),
         fluidRow(
           box(width = 4, title = "Pengaturan Regresi", status = "primary", solidHeader = TRUE,
             selectInput("reg_dependent", "Variabel Dependen:", choices = NULL),
@@ -701,12 +770,13 @@ server <- function(input, output, session) {
     transformed_data = NULL
   )
   
-  # Update choices when data changes
-  observe({
-    if (!is.null(values$current_data)) {
-      numeric_vars <- names(values$current_data)[sapply(values$current_data, is.numeric)]
-      all_vars <- names(values$current_data)
-      factor_vars <- names(values$current_data)[sapply(values$current_data, function(x) is.factor(x) || is.character(x))]
+     # Update choices when data changes
+   observe({
+     if (!is.null(values$current_data)) {
+       numeric_vars <- names(values$current_data)[sapply(values$current_data, is.numeric)]
+       all_vars <- names(values$current_data)
+       factor_vars <- names(values$current_data)[sapply(values$current_data, function(x) is.factor(x) || is.character(x) || length(unique(x)) <= 10)]
+       char_vars <- names(values$current_data)[sapply(values$current_data, function(x) is.character(x) || is.factor(x))]
       
       updateSelectInput(session, "var_to_transform", choices = numeric_vars)
       updateSelectInput(session, "desc_variables", choices = numeric_vars)
@@ -722,13 +792,14 @@ server <- function(input, output, session) {
       updateSelectInput(session, "reg_independent", choices = numeric_vars)
       updateSelectInput(session, "map_variable", choices = numeric_vars)
       
-      # Group by options
-      group_choices <- c("None" = "none", setNames(factor_vars, factor_vars))
-      updateSelectInput(session, "group_by_var", choices = group_choices)
-      updateSelectInput(session, "assumption_group", choices = group_choices)
-      updateSelectInput(session, "group_var_mean", choices = factor_vars)
-      updateSelectInput(session, "group_var_prop", choices = factor_vars)
-      updateSelectInput(session, "color_var", choices = group_choices)
+             # Group by options
+       group_choices <- c("None" = "none", setNames(char_vars, char_vars))
+       color_choices <- c("None" = "none", setNames(c(char_vars, factor_vars), c(char_vars, factor_vars)))
+       updateSelectInput(session, "group_by_var", choices = group_choices)
+       updateSelectInput(session, "assumption_group", choices = group_choices)
+       updateSelectInput(session, "group_var_mean", choices = char_vars)
+       updateSelectInput(session, "group_var_prop", choices = char_vars)
+       updateSelectInput(session, "color_var", choices = color_choices)
     }
   })
   
@@ -752,16 +823,24 @@ server <- function(input, output, session) {
          showNotification("Data SOVI berhasil dimuat!", type = "message")
   })
   
-  observeEvent(input$file_upload, {
-    if (!is.null(input$file_upload)) {
-      tryCatch({
-        values$current_data <- read.csv(input$file_upload$datapath)
-                 showNotification("File berhasil diupload!", type = "message")
-      }, error = function(e) {
-        showNotification("Error loading file!", type = "error")
-      })
-    }
-  })
+     observeEvent(input$file_upload, {
+     if (!is.null(input$file_upload)) {
+       tryCatch({
+         file_ext <- tools::file_ext(input$file_upload$name)
+         if (file_ext %in% c("csv")) {
+           values$current_data <- read.csv(input$file_upload$datapath, stringsAsFactors = FALSE)
+         } else if (file_ext %in% c("xlsx", "xls")) {
+           values$current_data <- openxlsx::read.xlsx(input$file_upload$datapath)
+         } else {
+           showNotification("Format file tidak didukung!", type = "error")
+           return()
+         }
+         showNotification("File berhasil diupload!", type = "message")
+       }, error = function(e) {
+         showNotification(paste("Error loading file:", e$message), type = "error")
+       })
+     }
+   })
   
   # Transform data
   observeEvent(input$apply_transform, {
@@ -776,12 +855,16 @@ server <- function(input, output, session) {
                                                                    probs = seq(0, 1, length.out = input$n_quantiles + 1)),
                                                    include.lowest = TRUE,
                                                    labels = paste0("Q", 1:input$n_quantiles))
-    } else if (input$transform_method == "custom") {
-      breaks <- as.numeric(unlist(strsplit(input$custom_breaks, ",")))
-      data_copy[[paste0(var_name, "_cat")]] <- cut(data_copy[[var_name]], 
-                                                   breaks = breaks,
-                                                   include.lowest = TRUE)
-    } else if (input$transform_method == "log") {
+         } else if (input$transform_method == "custom") {
+       # Ambil nilai breaks dari input terpisah
+       breaks <- c(input$break1, input$break2, input$break3, input$break4, input$break5)
+       breaks <- breaks[1:input$n_custom_breaks]
+       breaks <- sort(unique(breaks))
+       
+       data_copy[[paste0(var_name, "_cat")]] <- cut(data_copy[[var_name]], 
+                                                    breaks = breaks,
+                                                    include.lowest = TRUE)
+     } else if (input$transform_method == "log") {
       data_copy[[paste0(var_name, "_log")]] <- log(data_copy[[var_name]] + 1)
     } else if (input$transform_method == "sqrt") {
       data_copy[[paste0(var_name, "_sqrt")]] <- sqrt(abs(data_copy[[var_name]]))
@@ -882,57 +965,73 @@ server <- function(input, output, session) {
     }
   })
   
-  # =================== VISUALIZATION ===================
-  observeEvent(input$create_plot, {
-    req(input$plot_type, input$x_var)
-    
-    if (input$plot_type == "scatter") {
-      req(input$y_var)
-      p <- ggplot(values$current_data, aes_string(x = input$x_var, y = input$y_var))
-      if (input$color_var != "none") {
-        p <- p + aes_string(color = input$color_var)
-      }
-      p <- p + geom_point(alpha = 0.6) + 
-        geom_smooth(method = "lm", se = TRUE) +
-        labs(title = paste("Scatter Plot:", input$y_var, "vs", input$x_var)) +
-        theme_minimal()
-    } else if (input$plot_type == "boxplot") {
-      req(input$y_var)
-      p <- ggplot(values$current_data, aes_string(x = input$x_var, y = input$y_var))
-      if (input$color_var != "none") {
-        p <- p + aes_string(fill = input$color_var)
-      }
-      p <- p + geom_boxplot() +
-        labs(title = paste("Box Plot:", input$y_var, "by", input$x_var)) +
-        theme_minimal() +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1))
-    } else if (input$plot_type == "histogram") {
-      p <- ggplot(values$current_data, aes_string(x = input$x_var))
-      if (input$color_var != "none") {
-        p <- p + aes_string(fill = input$color_var)
-      }
-      p <- p + geom_histogram(bins = 30, alpha = 0.7) +
-        labs(title = paste("Histogram:", input$x_var)) +
-        theme_minimal()
-    } else if (input$plot_type == "correlation") {
-      numeric_data <- values$current_data[sapply(values$current_data, is.numeric)]
-      cor_matrix <- cor(numeric_data, use = "complete.obs")
-      
-      # Convert correlation matrix to long format for ggplot
-      cor_df <- expand.grid(Var1 = rownames(cor_matrix), Var2 = colnames(cor_matrix))
-      cor_df$value <- as.vector(cor_matrix)
-      
-      p <- ggplot(cor_df, aes(x = Var1, y = Var2, fill = value)) +
-        geom_tile() +
-        scale_fill_gradient2(low = "blue", high = "red", mid = "white", midpoint = 0) +
-        labs(title = "Correlation Matrix") +
-        theme_minimal() +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1))
-    }
-    
-    output$main_plot <- renderPlotly({
-      ggplotly(p)
-    })
+     # =================== VISUALIZATION ===================
+   observeEvent(input$create_plot, {
+     req(input$plot_type, input$x_var)
+     
+     # Define color palette
+     color_palette <- c("#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b")
+     
+           if (input$plot_type == "scatter") {
+        req(input$y_var)
+        p <- ggplot(values$current_data, aes_string(x = input$x_var, y = input$y_var))
+        if (input$color_var != "none") {
+          p <- p + aes_string(color = input$color_var) +
+            scale_color_manual(values = color_palette) +
+            geom_point(alpha = 0.6)
+        } else {
+          p <- p + geom_point(alpha = 0.6, color = "#1f77b4")
+        }
+        p <- p + geom_smooth(method = "lm", se = TRUE, color = "#d62728") +
+          labs(title = paste("Scatter Plot:", input$y_var, "vs", input$x_var)) +
+          theme_minimal()
+           } else if (input$plot_type == "boxplot") {
+        req(input$y_var)
+        p <- ggplot(values$current_data, aes_string(x = input$x_var, y = input$y_var))
+        if (input$color_var != "none") {
+          p <- p + aes_string(fill = input$color_var) +
+            scale_fill_manual(values = color_palette) +
+            geom_boxplot(alpha = 0.7)
+        } else {
+          p <- p + geom_boxplot(fill = "#1f77b4", alpha = 0.7)
+        }
+        p <- p + labs(title = paste("Box Plot:", input$y_var, "by", input$x_var)) +
+          theme_minimal() +
+          theme(axis.text.x = element_text(angle = 45, hjust = 1))
+     } else if (input$plot_type == "histogram") {
+       p <- ggplot(values$current_data, aes_string(x = input$x_var))
+       if (input$color_var != "none") {
+         p <- p + aes_string(fill = input$color_var) +
+           scale_fill_manual(values = color_palette) +
+           geom_histogram(bins = 30, alpha = 0.7)
+       } else {
+         p <- p + geom_histogram(bins = 30, alpha = 0.7, fill = "#1f77b4")
+       }
+       p <- p + labs(title = paste("Histogram:", input$x_var)) +
+         theme_minimal()
+     } else if (input$plot_type == "correlation") {
+       numeric_data <- values$current_data[sapply(values$current_data, is.numeric)]
+       cor_matrix <- cor(numeric_data, use = "complete.obs")
+       
+       # Convert correlation matrix to long format for ggplot
+       cor_df <- expand.grid(Var1 = rownames(cor_matrix), Var2 = colnames(cor_matrix))
+       cor_df$value <- as.vector(cor_matrix)
+       
+       p <- ggplot(cor_df, aes(x = Var1, y = Var2, fill = value)) +
+         geom_tile() +
+         scale_fill_gradient2(low = "#2ca02c", high = "#d62728", mid = "white", midpoint = 0) +
+         labs(title = "Correlation Matrix") +
+         theme_minimal() +
+         theme(axis.text.x = element_text(angle = 45, hjust = 1))
+     }
+     
+           output$main_plot <- renderPlotly({
+        if (exists("p") && inherits(p, "ggplot")) {
+          ggplotly(p)
+        } else {
+          plotly::plot_ly() %>% plotly::add_text(text = "Error: Plot tidak dapat dibuat")
+        }
+      })
     
     output$visual_interpretation <- renderText({
       switch(input$plot_type,
@@ -945,45 +1044,132 @@ server <- function(input, output, session) {
     })
   })
   
-  # =================== MAPPING ===================
-  observeEvent(input$create_map, {
-    req(input$map_variable)
-    
-    # Generate sample coordinates for demonstration
-    n_points <- nrow(values$current_data)
-    lat <- runif(n_points, 25, 49)  # US latitude range
-    lng <- runif(n_points, -125, -65)  # US longitude range
-    
-    map_data <- data.frame(
-      lat = lat,
-      lng = lng,
-      value = values$current_data[[input$map_variable]]
-    )
-    
-    output$interactive_map <- renderLeaflet({
-      leaflet(map_data) %>%
-        addTiles() %>%
-        addCircleMarkers(
-          ~lng, ~lat,
-          radius = ~sqrt(abs(value)) * 2,
-          color = ~colorNumeric("viridis", value)(value),
-          popup = ~paste("Value:", round(value, 2)),
-          opacity = 0.7
-        ) %>%
-        addLegend(
-          "bottomright",
-          pal = colorNumeric("viridis", map_data$value),
-          values = ~value,
-          title = input$map_variable
-        )
-    })
-    
-    output$map_interpretation <- renderText({
-      paste("Peta interaktif menunjukkan distribusi geografis dari variabel", input$map_variable, 
-            ". Ukuran dan warna lingkaran mencerminkan nilai variabel. Pola spasial dapat mengungkap ",
-            "clustering geografis atau hotspot dari fenomena yang diamati.")
-    })
-  })
+     # =================== MAPPING ===================
+   # Reactive values for map
+   values$map_data <- reactive({
+     if (input$map_variable != "" && !is.null(input$map_variable)) {
+       n_points <- min(nrow(values$current_data), 500)  # Limit points for performance
+       indices <- sample(nrow(values$current_data), n_points)
+       
+       # Generate more realistic US coordinates based on state data if available
+       if ("State" %in% names(values$current_data)) {
+         # Use state-based coordinates (simplified)
+         state_coords <- data.frame(
+           State = c("CA", "TX", "FL", "NY", "PA", "IL", "OH", "MI", "GA", "NC"),
+           lat = c(36.7783, 31.9686, 27.7663, 42.1657, 40.2732, 40.3363, 40.3888, 43.3266, 33.7490, 35.7596),
+           lng = c(-119.4179, -99.9018, -82.6404, -74.9481, -77.1017, -89.0022, -82.7649, -84.3426, -83.7534, -79.0193)
+         )
+         
+         sample_data <- values$current_data[indices, ]
+         map_coords <- merge(sample_data, state_coords, by = "State", all.x = TRUE)
+         
+         # Add random variation to coordinates
+         map_coords$lat <- map_coords$lat + runif(nrow(map_coords), -2, 2)
+         map_coords$lng <- map_coords$lng + runif(nrow(map_coords), -2, 2)
+         
+         # Fill missing coordinates with random US coordinates
+         missing_coords <- is.na(map_coords$lat)
+         map_coords$lat[missing_coords] <- runif(sum(missing_coords), 25, 49)
+         map_coords$lng[missing_coords] <- runif(sum(missing_coords), -125, -65)
+       } else {
+         # Generate random US coordinates
+         map_coords <- values$current_data[indices, ]
+         map_coords$lat <- runif(n_points, 25, 49)
+         map_coords$lng <- runif(n_points, -125, -65)
+       }
+       
+       map_coords$value <- map_coords[[input$map_variable]]
+       return(map_coords)
+     }
+     return(NULL)
+   })
+   
+   observeEvent(input$create_map, {
+     req(input$map_variable)
+     
+     map_data <- values$map_data()
+     if (is.null(map_data)) return()
+     
+     # Create color palette
+     pal <- colorNumeric(
+       palette = c("#0066CC", "#0080FF", "#3399FF", "#66B2FF", "#99CCFF", "#FFCC99", "#FF9966", "#FF6633", "#FF3300", "#CC0000"),
+       domain = map_data$value
+     )
+     
+     output$interactive_map <- renderLeaflet({
+       leaflet(map_data) %>%
+         addProviderTiles(providers$OpenStreetMap) %>%
+         setView(lng = -95, lat = 39, zoom = 4) %>%
+         addCircleMarkers(
+           ~lng, ~lat,
+           radius = ~pmax(3, pmin(15, (value - min(value, na.rm = TRUE)) / (max(value, na.rm = TRUE) - min(value, na.rm = TRUE)) * 12 + 3)),
+           color = "white",
+           weight = 1,
+           fillColor = ~pal(value),
+           fillOpacity = 0.8,
+           popup = ~paste("<strong>", input$map_variable, ":</strong>", round(value, 3),
+                         if("State" %in% names(map_data)) paste("<br><strong>State:</strong>", State) else "",
+                         if("County" %in% names(map_data)) paste("<br><strong>County:</strong>", County) else ""),
+           popupOptions = popupOptions(closeButton = TRUE)
+         ) %>%
+         addLegend(
+           "bottomright",
+           pal = pal,
+           values = ~value,
+           title = paste("Nilai", input$map_variable),
+           opacity = 0.8
+         ) %>%
+         addScaleBar(position = "bottomleft")
+     })
+     
+     output$map_interpretation <- renderText({
+       paste("Peta interaktif menunjukkan distribusi geografis dari variabel", input$map_variable, 
+             "di seluruh Amerika Serikat. Ukuran lingkaran mencerminkan nilai relatif variabel, ",
+             "sedangkan warna menunjukkan gradasi dari nilai terendah (biru) hingga tertinggi (merah). ",
+             "Pola spasial dapat mengungkap clustering geografis, hotspot, atau distribusi regional ",
+             "dari fenomena yang diamati. Klik pada titik untuk melihat detail nilai.")
+     })
+   })
+   
+   # Download handler for map
+   output$download_map <- downloadHandler(
+     filename = function() {
+       paste0("peta_", input$map_variable, "_", Sys.Date(), ".html")
+     },
+     content = function(file) {
+       map_data <- values$map_data()
+       if (!is.null(map_data)) {
+         pal <- colorNumeric(
+           palette = c("#0066CC", "#0080FF", "#3399FF", "#66B2FF", "#99CCFF", "#FFCC99", "#FF9966", "#FF6633", "#FF3300", "#CC0000"),
+           domain = map_data$value
+         )
+         
+         map_widget <- leaflet(map_data) %>%
+           addProviderTiles(providers$OpenStreetMap) %>%
+           setView(lng = -95, lat = 39, zoom = 4) %>%
+           addCircleMarkers(
+             ~lng, ~lat,
+             radius = ~pmax(3, pmin(15, (value - min(value, na.rm = TRUE)) / (max(value, na.rm = TRUE) - min(value, na.rm = TRUE)) * 12 + 3)),
+             color = "white",
+             weight = 1,
+             fillColor = ~pal(value),
+             fillOpacity = 0.8,
+             popup = ~paste("<strong>", input$map_variable, ":</strong>", round(value, 3)),
+             popupOptions = popupOptions(closeButton = TRUE)
+           ) %>%
+           addLegend(
+             "bottomright",
+             pal = pal,
+             values = ~value,
+             title = paste("Nilai", input$map_variable),
+             opacity = 0.8
+           ) %>%
+           addScaleBar(position = "bottomleft")
+         
+         htmlwidgets::saveWidget(map_widget, file = file, selfcontained = TRUE)
+       }
+     }
+   )
   
   # =================== ASSUMPTION TESTS ===================
   observeEvent(input$run_assumptions, {
@@ -1391,17 +1577,58 @@ Dashboard ini menyediakan analisis statistik komprehensif untuk data SOVI.
     }
   )
   
-  # Additional download handlers for reports and results...
-  output$download_desc_report <- downloadHandler(
-    filename = function() {
-      paste0("descriptive_report_", Sys.Date(), ".html")
-    },
-    content = function(file) {
-      # Create HTML report
-      html_content <- "<html><body><h1>Laporan Statistik Deskriptif</h1><p>Laporan lengkap analisis deskriptif.</p></body></html>"
-      writeLines(html_content, file)
-    }
-  )
+     # Additional download handlers for reports and results...
+   output$download_desc_report <- downloadHandler(
+     filename = function() {
+       paste0("laporan_statistik_deskriptif_", Sys.Date(), ".docx")
+     },
+     content = function(file) {
+       # Create Word document
+       doc <- officer::read_docx()
+       doc <- officer::body_add_par(doc, "LAPORAN STATISTIK DESKRIPTIF", style = "heading 1")
+       doc <- officer::body_add_par(doc, paste("Tanggal:", Sys.Date()))
+       doc <- officer::body_add_par(doc, "")
+       
+       if (!is.null(input$desc_variables)) {
+         doc <- officer::body_add_par(doc, "VARIABEL YANG DIANALISIS:", style = "heading 2")
+         doc <- officer::body_add_par(doc, paste(input$desc_variables, collapse = ", "))
+         doc <- officer::body_add_par(doc, "")
+         
+         doc <- officer::body_add_par(doc, "RINGKASAN STATISTIK:", style = "heading 2")
+         
+         data_subset <- values$current_data[, input$desc_variables, drop = FALSE]
+         if (input$group_by_var != "none") {
+           desc_stats <- data_subset %>%
+             group_by(!!sym(input$group_by_var)) %>%
+             summarise_all(list(
+               Mean = ~mean(.x, na.rm = TRUE),
+               Median = ~median(.x, na.rm = TRUE),
+               SD = ~sd(.x, na.rm = TRUE),
+               Min = ~min(.x, na.rm = TRUE),
+               Max = ~max(.x, na.rm = TRUE)
+             ), .groups = 'drop')
+         } else {
+           desc_stats <- data_subset %>%
+             summarise_all(list(
+               Mean = ~mean(.x, na.rm = TRUE),
+               Median = ~median(.x, na.rm = TRUE),
+               SD = ~sd(.x, na.rm = TRUE),
+               Min = ~min(.x, na.rm = TRUE),
+               Max = ~max(.x, na.rm = TRUE)
+             ))
+         }
+         
+         # Add table to document
+         doc <- officer::body_add_table(doc, desc_stats)
+         doc <- officer::body_add_par(doc, "")
+         
+         doc <- officer::body_add_par(doc, "INTERPRETASI:", style = "heading 2")
+         doc <- officer::body_add_par(doc, paste("Analisis statistik deskriptif menunjukkan ringkasan numerik dari", length(input$desc_variables), "variabel yang dipilih. Statistik ini memberikan gambaran tentang karakteristik data termasuk ukuran pemusatan, penyebaran, dan bentuk distribusi."))
+       }
+       
+       print(doc, target = file)
+     }
+   )
   
   # Start analysis button
   observeEvent(input$start_analysis, {

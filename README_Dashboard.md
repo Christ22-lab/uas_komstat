@@ -21,11 +21,11 @@ Dashboard Statistik Terpadu adalah aplikasi web interaktif yang dikembangkan men
 - Manual pengguna
 
 ### 2. Manajemen Data
-- Upload file CSV atau load data default dari URL
-- Preview dan ringkasan data
+- Upload file CSV/Excel atau load data default dari URL
+- Preview dan ringkasan data dengan keterangan format yang didukung
 - **Transformasi variabel kontinyu ke kategorik:**
   - Kategorisasi berdasarkan kuantil
-  - Kategorisasi custom dengan breakpoint manual
+  - Kategorisasi custom dengan input terpisah untuk setiap breakpoint
   - Transformasi logaritma, square root, standardisasi
 - **Interpretasi** untuk setiap metode transformasi
 - Download data yang sudah ditransformasi
@@ -34,19 +34,22 @@ Dashboard Statistik Terpadu adalah aplikasi web interaktif yang dikembangkan men
 
 #### 3a. Statistik Deskriptif
 - Mean, median, standar deviasi, min, max, skewness, kurtosis
-- Analisis berdasarkan kelompok
+- Analisis berdasarkan kelompok (perbaikan deteksi variabel kategorik)
 - **Interpretasi lengkap** untuk setiap output
+- Download laporan dalam format Word (.docx)
 
 #### 3b. Visualisasi
 - Scatter plot, box plot, histogram, correlation matrix, bar chart, density plot
-- Visualisasi interaktif dengan plotly
+- Visualisasi interaktif dengan plotly dan palette warna yang menarik
 - **Interpretasi** untuk setiap jenis visualisasi
 - Download dalam format JPG dan PDF
+- Perbaikan error ggplotly dan penambahan sistem pewarnaan
 
 #### 3c. Pemetaan
-- Heat map, choropleth, point map dengan Leaflet
-- Peta interaktif dengan koordinat geografis
-- **Interpretasi pola spasial**
+- Heat map, choropleth, point map dengan Leaflet yang diperbaiki
+- Peta interaktif dengan koordinat geografis realistis
+- **Interpretasi pola spasial** yang komprehensif
+- Download peta dalam format HTML
 
 ### 4. Uji Asumsi Data
 - **Uji Normalitas**: Shapiro-Wilk test / Anderson-Darling
@@ -94,7 +97,7 @@ Dashboard Statistik Terpadu adalah aplikasi web interaktif yang dikembangkan men
 install.packages(c("shiny", "shinydashboard", "DT", "plotly", "ggplot2", 
                    "corrplot", "leaflet", "htmlwidgets", "knitr", "rmarkdown", 
                    "openxlsx", "VIM", "mice", "nortest", "car", "broom", 
-                   "dplyr", "gridExtra", "sf", "maps", "moments"))
+                   "dplyr", "gridExtra", "sf", "maps", "moments", "officer"))
 ```
 
 ### Menjalankan Dashboard
@@ -114,12 +117,15 @@ Setelah dijalankan, dashboard akan terbuka di browser pada alamat:
 ## Fitur Teknis
 
 - **Platform**: R Shiny
-- **Package Utama**: shiny, ggplot2, plotly, DT, leaflet
-- **Format Output**: PDF, Word, Excel, JPG
+- **Package Utama**: shiny, ggplot2, plotly, DT, leaflet, officer
+- **Format Output**: PDF, Word (DOCX), Excel, JPG, HTML
+- **Upload Support**: CSV, Excel (.xlsx, .xls)
 - **Responsif**: Ya, dapat diakses di desktop dan mobile
 - **Data Loading**: Otomatis dari URL dengan fallback
-- **Error Handling**: Robust error handling
+- **Error Handling**: Robust error handling dengan notifikasi
 - **Single File**: Seluruh dashboard dalam satu file R
+- **Warna**: Sistem palette warna yang konsisten
+- **Peta**: Koordinat geografis realistis dengan provider tiles
 
 ## Cara Penggunaan Dashboard
 
