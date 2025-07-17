@@ -1834,79 +1834,142 @@ server <- function(input, output, session) {
       reg_model <- lm(as.formula(formula_str), data = reg_data)
       reg_summary <- summary(reg_model)
     
+      # Extract key statistics
+      r_squared <- reg_summary$r.squared
+      adj_r_squared <- reg_summary$adj.r.squared
+      f_stat <- reg_summary$fstatistic
+      p_value <- pf(f_stat[1], f_stat[2], f_stat[3], lower.tail = FALSE)
+      
       output$regression_summary <- renderText({
         paste0(
           "**HIPOTESIS UJI REGRESI LINEAR BERGANDA:**\n\n",
           "• H₀: β₁ = β₂ = ... = βₖ = 0 (semua koefisien regresi sama dengan nol)\n",
           "• H₁: Minimal ada satu βᵢ ≠ 0 (minimal ada satu prediktor yang signifikan)\n\n",
-          "**HASIL ANALISIS REGRESI:**\n\n",
-          capture.output(print(reg_summary))
-        )
-      })
-      
-      output$regression_interpretation <- renderText({
-        r_squared <- reg_summary$r.squared
-        adj_r_squared <- reg_summary$adj.r.squared
-        f_stat <- reg_summary$fstatistic
-        p_value <- pf(f_stat[1], f_stat[2], f_stat[3], lower.tail = FALSE)
-        
-        paste0(
-          "**INTERPRETASI MODEL REGRESI:**\n\n",
-          "**KEBAIKAN MODEL:**\n",
+          "**RINGKASAN MODEL:**\n\n",
           "• R-squared: ", round(r_squared, 4), " (", round(r_squared*100, 2), "% varians dijelaskan)\n",
           "• Adjusted R-squared: ", round(adj_r_squared, 4), "\n",
           "• F-statistic: ", round(f_stat[1], 4), " (p-value: ", format(p_value, scientific = TRUE), ")\n",
           "• Jumlah observasi: ", nrow(reg_data), "\n\n",
+          "**TABEL KOEFISIEN:**\n\n",
+          capture.output(print(reg_summary$coefficients))
+        )
+      })
+      
+      output$regression_interpretation <- renderText({
+        paste0(
+          "**INTERPRETASI HASIL REGRESI:**\n\n",
           "**KRITERIA KEPUTUSAN:**\n",
           "• α = 0.05 (tingkat signifikansi)\n",
           "• Jika p-value < 0.05: Tolak H₀ (model signifikan)\n",
           "• Jika p-value ≥ 0.05: Gagal tolak H₀ (model tidak signifikan)\n\n",
-          "**KESIMPULAN:**\n",
+          "**KESIMPULAN MODEL:**\n",
           if (p_value < 0.05) {
             "• Model secara keseluruhan signifikan (p < 0.05)\n• Model dapat menjelaskan variasi dalam variabel dependen\n• Minimal ada satu prediktor yang berpengaruh signifikan"
           } else {
             "• Model secara keseluruhan tidak signifikan (p ≥ 0.05)\n• Model mungkin tidak memberikan prediksi yang baik\n• Perlu evaluasi ulang pemilihan variabel"
-          }
+          }, "\n\n",
+          "**INTERPRETASI KOEFISIEN:**\n",
+          "• Koefisien dengan p-value < 0.05 berpengaruh signifikan\n",
+          "• Tanda koefisien menunjukkan arah hubungan (positif/negatif)\n",
+          "• Nilai koefisien menunjukkan besaran perubahan variabel dependen"
         )
       })
     
     if (input$reg_assumptions) {
       # Test assumptions
-      assumptions_text <- paste(
-        "Uji Asumsi Regresi:",
-        "\n1. Normalitas Residuals (Shapiro-Wilk):",
-        capture.output(print(shapiro.test(residuals(reg_model)))),
-        "\n2. Homoskedastisitas (Breusch-Pagan):",
-        capture.output(print(car::ncvTest(reg_model))),
-        "\n3. Multikolinearitas (VIF):",
-        if (length(input$reg_independent) > 1) capture.output(print(car::vif(reg_model))) else "VIF tidak dapat dihitung untuk satu prediktor"
-      )
+      norm_test <- shapiro.test(residuals(reg_model))
+      homo_test <- car::ncvTest(reg_model)
       
       output$regression_assumptions <- renderText({
-        assumptions_text
+        paste0(
+          "**UJI ASUMSI REGRESI:**\n\n",
+          "**1. Normalitas Residual (Shapiro-Wilk):**\n",
+          "• Statistik: ", round(norm_test$statistic, 4), "\n",
+          "• p-value: ", format(norm_test$p.value, scientific = TRUE), "\n\n",
+          "**2. Homoskedastisitas (Breusch-Pagan):**\n",
+          "• Statistik: ", round(homo_test$ChiSquare, 4), "\n",
+          "• p-value: ", format(homo_test$p, scientific = TRUE), "\n\n",
+          "**3. Multikolinearitas (VIF):**\n",
+          if (length(input$reg_independent) > 1) {
+            vif_values <- car::vif(reg_model)
+            paste("•", names(vif_values), ":", round(vif_values, 3), collapse = "\n")
+          } else {
+            "• VIF tidak dapat dihitung untuk satu prediktor"
+          }
+        )
       })
       
       output$assumptions_interpretation <- renderText({
-        "Interpretasi Uji Asumsi:\n- Normalitas: p > 0.05 menunjukkan residual berdistribusi normal\n- Homoskedastisitas: p > 0.05 menunjukkan varians residual konstan\n- Multikolinearitas: VIF < 5 menunjukkan tidak ada masalah multikolinearitas"
+        paste0(
+          "**INTERPRETASI UJI ASUMSI:**\n\n",
+          "**Normalitas Residual:**\n",
+          if (norm_test$p.value > 0.05) {
+            "• Asumsi normalitas terpenuhi (p > 0.05)\n• Residual berdistribusi normal"
+          } else {
+            "• Asumsi normalitas dilanggar (p ≤ 0.05)\n• Residual tidak berdistribusi normal"
+          }, "\n\n",
+          "**Homoskedastisitas:**\n",
+          if (homo_test$p > 0.05) {
+            "• Asumsi homoskedastisitas terpenuhi (p > 0.05)\n• Varians residual konstan"
+          } else {
+            "• Asumsi homoskedastisitas dilanggar (p ≤ 0.05)\n• Terjadi heteroskedastisitas"
+          }, "\n\n",
+          "**Multikolinearitas:**\n",
+          if (length(input$reg_independent) > 1) {
+            vif_values <- car::vif(reg_model)
+            if (all(vif_values < 5)) {
+              "• Tidak ada masalah multikolinearitas (semua VIF < 5)"
+            } else if (any(vif_values >= 10)) {
+              "• Masalah multikolinearitas serius (ada VIF ≥ 10)"
+            } else {
+              "• Multikolinearitas sedang (ada VIF 5-10)"
+            }
+          } else {
+            "• Hanya satu prediktor, tidak perlu uji multikolinearitas"
+          }
+        )
       })
     }
     
     if (input$reg_diagnostics) {
       # Model diagnostics
-      diagnostics_text <- paste(
-        "Diagnostik Model:",
-        "\nInfluential Points (Cook's Distance > 4/n):",
-        paste(which(cooks.distance(reg_model) > 4/nrow(values$current_data)), collapse = ", "),
-        "\nLeverage Points (Hat values > 2p/n):",
-        paste(which(hatvalues(reg_model) > 2*length(coef(reg_model))/nrow(values$current_data)), collapse = ", ")
-      )
+      cooks_d <- cooks.distance(reg_model)
+      leverage <- hatvalues(reg_model)
+      influential_points <- which(cooks_d > 4/nrow(reg_data))
+      leverage_points <- which(leverage > 2*length(coef(reg_model))/nrow(reg_data))
       
       output$regression_diagnostics <- renderText({
-        diagnostics_text
+        paste0(
+          "**DIAGNOSTIK MODEL:**\n\n",
+          "**Influential Points (Cook's Distance > 4/n):**\n",
+          if (length(influential_points) > 0) {
+            paste("• Observasi berpengaruh:", paste(influential_points, collapse = ", "), "\n",
+                  "• Jumlah: ", length(influential_points), " dari ", nrow(reg_data), " observasi")
+          } else {
+            "• Tidak ada observasi yang sangat berpengaruh"
+          }, "\n\n",
+          "**Leverage Points (Hat values > 2p/n):**\n",
+          if (length(leverage_points) > 0) {
+            paste("• Observasi dengan leverage tinggi:", paste(leverage_points, collapse = ", "), "\n",
+                  "• Jumlah: ", length(leverage_points), " dari ", nrow(reg_data), " observasi")
+          } else {
+            "• Tidak ada observasi dengan leverage tinggi"
+          }
+        )
       })
       
       output$diagnostics_interpretation <- renderText({
-        "Interpretasi Diagnostik:\n- Cook's Distance mengidentifikasi observasi yang sangat berpengaruh terhadap model\n- Leverage mengidentifikasi observasi dengan nilai prediktor yang ekstrem"
+        paste0(
+          "**INTERPRETASI DIAGNOSTIK:**\n\n",
+          "**Cook's Distance:**\n",
+          "• Mengidentifikasi observasi yang sangat berpengaruh terhadap model\n",
+          "• Nilai > 4/n menunjukkan observasi berpengaruh\n",
+          "• Pertimbangkan untuk menginvestigasi atau menghapus observasi ini\n\n",
+          "**Leverage:**\n",
+          "• Mengidentifikasi observasi dengan nilai prediktor yang ekstrem\n",
+          "• Nilai > 2p/n menunjukkan leverage tinggi\n",
+          "• Observasi ini dapat mempengaruhi hasil regresi secara signifikan"
+        )
       })
     }
     
