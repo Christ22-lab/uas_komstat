@@ -30,6 +30,7 @@ if (!require(dplyr)) install.packages("dplyr")
 if (!require(gridExtra)) install.packages("gridExtra")
 if (!require(sf)) install.packages("sf")
 if (!require(maps)) install.packages("maps")
+if (!require(moments)) install.packages("moments")
 
 library(shiny)
 library(shinydashboard)
@@ -51,6 +52,7 @@ library(dplyr)
 library(gridExtra)
 library(sf)
 library(maps)
+library(moments)
 
 # Global variables
 sovi_url <- "https://raw.githubusercontent.com/bmlmcmc/naspaclust/main/data/sovi_data.csv"
@@ -132,21 +134,21 @@ ui <- dashboardPage(
   
   dashboardSidebar(
     sidebarMenu(
-      menuItem("🏠 Beranda", tabName = "home", icon = icon("home")),
-      menuItem("📊 Manajemen Data", tabName = "data_management", icon = icon("database")),
-      menuItem("🔍 Eksplorasi Data", tabName = "exploration", icon = icon("chart-line"),
+      menuItem("Beranda", tabName = "home", icon = icon("home")),
+      menuItem("Manajemen Data", tabName = "data_management", icon = icon("database")),
+      menuItem("Eksplorasi Data", tabName = "exploration", icon = icon("chart-line"),
         menuSubItem("Statistik Deskriptif", tabName = "descriptive"),
         menuSubItem("Visualisasi", tabName = "visualization"),
         menuSubItem("Peta", tabName = "mapping")
       ),
-      menuItem("✅ Uji Asumsi", tabName = "assumptions", icon = icon("check-circle")),
-      menuItem("📈 Statistik Inferensia", tabName = "inference", icon = icon("calculator"),
+      menuItem("Uji Asumsi", tabName = "assumptions", icon = icon("check-circle")),
+      menuItem("Statistik Inferensia", tabName = "inference", icon = icon("calculator"),
         menuSubItem("Uji Rata-rata", tabName = "mean_tests"),
         menuSubItem("Uji Proporsi & Varians", tabName = "prop_var_tests"),
         menuSubItem("ANOVA", tabName = "anova_tests")
       ),
-      menuItem("📉 Regresi Linear", tabName = "regression", icon = icon("line-chart")),
-      menuItem("📚 Metadata", tabName = "metadata", icon = icon("info-circle"))
+      menuItem("Regresi Linear", tabName = "regression", icon = icon("line-chart")),
+      menuItem("Metadata", tabName = "metadata", icon = icon("info-circle"))
     )
   ),
   
@@ -174,11 +176,11 @@ ui <- dashboardPage(
       # =================== BERANDA ===================
       tabItem(tabName = "home",
         fluidRow(
-          box(width = 12, title = "Selamat Datang di Dashboard Statistik Terpadu", status = "primary", solidHeader = TRUE,
-            h3("🎯 Tentang Dashboard"),
+                     box(width = 12, title = "Selamat Datang di Dashboard Statistik Terpadu", status = "primary", solidHeader = TRUE,
+             h3("Tentang Dashboard"),
             p("Dashboard Statistik Terpadu adalah aplikasi web interaktif yang dikembangkan untuk analisis data SOVI (Social Vulnerability Index) secara komprehensif. Dashboard ini menyediakan berbagai fitur analisis statistik mulai dari eksplorasi data dasar hingga analisis regresi yang kompleks."),
             
-            h4("📊 Data yang Digunakan"),
+                         h4("Data yang Digunakan"),
             tags$ul(
               tags$li(strong("Dataset Utama:"), " SOVI (Social Vulnerability Index) Data"),
               tags$li(strong("Sumber:"), " Scientific Data Journal - Nature"),
@@ -186,38 +188,38 @@ ui <- dashboardPage(
               tags$li(strong("URL Metadata:"), tags$a(href = metadata_url, "Artikel Ilmiah", target = "_blank"))
             ),
             
-            h4("🛠️ Fitur Dashboard"),
+                         h4("Fitur Dashboard"),
             tags$div(
               style = "display: flex; flex-wrap: wrap; gap: 15px;",
               tags$div(
                 style = "flex: 1; min-width: 300px; background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #3c8dbc;",
-                h5("📊 Manajemen Data"),
+                                 h5("Manajemen Data"),
                 p("Transformasi variabel kontinyu ke kategorik, penanganan missing values, dan preprocessing data.")
               ),
               tags$div(
                 style = "flex: 1; min-width: 300px; background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #00a65a;",
-                h5("🔍 Eksplorasi Data"),
+                                 h5("Eksplorasi Data"),
                 p("Statistik deskriptif lengkap, visualisasi interaktif, dan pemetaan geografis data.")
               ),
               tags$div(
                 style = "flex: 1; min-width: 300px; background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #f39c12;",
-                h5("✅ Uji Asumsi"),
+                                 h5("Uji Asumsi"),
                 p("Uji normalitas dan homogenitas data untuk memastikan validitas analisis statistik.")
               ),
               tags$div(
                 style = "flex: 1; min-width: 300px; background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #dd4b39;",
-                h5("📈 Statistik Inferensia"),
+                                 h5("Statistik Inferensia"),
                 p("Uji hipotesis lengkap: uji rata-rata, proporsi, varians, dan ANOVA.")
               ),
               tags$div(
                 style = "flex: 1; min-width: 300px; background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #605ca8;",
-                h5("📉 Regresi Linear"),
+                                 h5("Regresi Linear"),
                 p("Analisis regresi berganda dengan uji asumsi dan diagnostik model.")
               )
             ),
             
             br(),
-            h4("📋 Informasi Teknis"),
+                         h4("Informasi Teknis"),
             tags$div(
               style = "background: #f9f9f9; padding: 15px; border-radius: 8px;",
               tags$ul(
@@ -230,13 +232,13 @@ ui <- dashboardPage(
             ),
             
             br(),
-            actionButton("start_analysis", "🚀 Mulai Analisis", class = "btn-primary btn-lg"),
+                         actionButton("start_analysis", "Mulai Analisis", class = "btn-primary btn-lg"),
             
             br(), br(),
-            h4("📞 Dukungan dan Bantuan"),
+                         h4("Dukungan dan Bantuan"),
             p("Jika Anda mengalami kendala atau membutuhkan bantuan, silakan merujuk ke dokumentasi atau hubungi tim pengembang."),
             
-            downloadButton("download_manual", "📖 Download Manual Pengguna", class = "btn-info")
+                         downloadButton("download_manual", "Download Manual Pengguna", class = "btn-info")
           )
         )
       ),
@@ -282,10 +284,10 @@ ui <- dashboardPage(
             ),
             actionButton("apply_transform", "Terapkan Transformasi", class = "btn-warning"),
             br(), br(),
-            div(class = "interpretation-box",
-                h5("📝 Interpretasi Transformasi:"),
-                textOutput("transform_interpretation")
-            )
+                         div(class = "interpretation-box",
+                 h5("Interpretasi Transformasi:"),
+                 textOutput("transform_interpretation")
+             )
           ),
           
           box(width = 6, title = "Hasil Transformasi", status = "success", solidHeader = TRUE,
@@ -311,10 +313,10 @@ ui <- dashboardPage(
           box(width = 8, title = "Statistik Deskriptif", status = "info", solidHeader = TRUE,
             DT::dataTableOutput("descriptive_table"),
             br(),
-            div(class = "interpretation-box",
-                h5("📊 Interpretasi Statistik Deskriptif:"),
-                textOutput("descriptive_interpretation")
-            )
+                         div(class = "interpretation-box",
+                 h5("Interpretasi Statistik Deskriptif:"),
+                 textOutput("descriptive_interpretation")
+             )
           )
         ),
         
@@ -322,12 +324,12 @@ ui <- dashboardPage(
           box(width = 12, title = "Visualisasi Distribusi", status = "success", solidHeader = TRUE,
             plotlyOutput("descriptive_plots", height = "600px"),
             br(),
-            div(class = "interpretation-box",
-                h5("📈 Interpretasi Visualisasi:"),
-                textOutput("plot_interpretation")
-            ),
+                         div(class = "interpretation-box",
+                 h5("Interpretasi Visualisasi:"),
+                 textOutput("plot_interpretation")
+             ),
             br(),
-            downloadButton("download_desc_report", "📋 Download Laporan Lengkap", class = "btn-info")
+                         downloadButton("download_desc_report", "Download Laporan Lengkap", class = "btn-info")
           )
         )
       ),
@@ -361,10 +363,10 @@ ui <- dashboardPage(
           box(width = 9, title = "Visualisasi Data", status = "info", solidHeader = TRUE,
             plotlyOutput("main_plot", height = "500px"),
             br(),
-            div(class = "interpretation-box",
-                h5("🎨 Interpretasi Visualisasi:"),
-                textOutput("visual_interpretation")
-            ),
+                         div(class = "interpretation-box",
+                 h5("Interpretasi Visualisasi:"),
+                 textOutput("visual_interpretation")
+             ),
             br(),
             fluidRow(
               column(6, downloadButton("download_plot_jpg", "Download JPG", class = "btn-success")),
@@ -388,10 +390,10 @@ ui <- dashboardPage(
                        )),
             actionButton("create_map", "Buat Peta", class = "btn-primary"),
             br(), br(),
-            div(class = "interpretation-box",
-                h5("🗺️ Interpretasi Peta:"),
-                textOutput("map_interpretation")
-            )
+                         div(class = "interpretation-box",
+                 h5("Interpretasi Peta:"),
+                 textOutput("map_interpretation")
+             )
           ),
           
           box(width = 8, title = "Peta Interaktif", status = "info", solidHeader = TRUE,
@@ -415,15 +417,15 @@ ui <- dashboardPage(
             actionButton("run_assumptions", "Jalankan Uji", class = "btn-primary")
           ),
           
-          box(width = 8, title = "Hasil Uji Asumsi", status = "info", solidHeader = TRUE,
-            h4("📊 Uji Normalitas"),
+                     box(width = 8, title = "Hasil Uji Asumsi", status = "info", solidHeader = TRUE,
+             h4("Uji Normalitas"),
             verbatimTextOutput("normality_result"),
             div(class = "interpretation-box",
                 textOutput("normality_interpretation")
             ),
             
             br(),
-            h4("📊 Uji Homogenitas"),
+                         h4("Uji Homogenitas"),
             verbatimTextOutput("homogeneity_result"),
             div(class = "interpretation-box",
                 textOutput("homogeneity_interpretation")
@@ -467,10 +469,10 @@ ui <- dashboardPage(
           box(width = 8, title = "Hasil Uji Rata-rata", status = "info", solidHeader = TRUE,
             verbatimTextOutput("mean_test_result"),
             br(),
-            div(class = "interpretation-box",
-                h5("📊 Interpretasi Hasil:"),
-                textOutput("mean_test_interpretation")
-            ),
+                         div(class = "interpretation-box",
+                 h5("Interpretasi Hasil:"),
+                 textOutput("mean_test_interpretation")
+             ),
             br(),
             plotlyOutput("mean_test_plot"),
             br(),
@@ -509,10 +511,10 @@ ui <- dashboardPage(
           box(width = 8, title = "Hasil Uji Proporsi/Varians", status = "info", solidHeader = TRUE,
             verbatimTextOutput("prop_var_result"),
             br(),
-            div(class = "interpretation-box",
-                h5("📊 Interpretasi Hasil:"),
-                textOutput("prop_var_interpretation")
-            ),
+                         div(class = "interpretation-box",
+                 h5("Interpretasi Hasil:"),
+                 textOutput("prop_var_interpretation")
+             ),
             br(),
             plotlyOutput("prop_var_plot"),
             br(),
@@ -544,10 +546,10 @@ ui <- dashboardPage(
           box(width = 8, title = "Hasil ANOVA", status = "info", solidHeader = TRUE,
             verbatimTextOutput("anova_result"),
             br(),
-            div(class = "interpretation-box",
-                h5("📊 Interpretasi ANOVA:"),
-                textOutput("anova_interpretation")
-            ),
+                         div(class = "interpretation-box",
+                 h5("Interpretasi ANOVA:"),
+                 textOutput("anova_interpretation")
+             ),
             conditionalPanel(
               condition = "input.post_hoc == true",
               br(),
@@ -580,10 +582,10 @@ ui <- dashboardPage(
           box(width = 8, title = "Hasil Regresi Linear Berganda", status = "info", solidHeader = TRUE,
             verbatimTextOutput("regression_summary"),
             br(),
-            div(class = "interpretation-box",
-                h5("📊 Interpretasi Model:"),
-                textOutput("regression_interpretation")
-            )
+                         div(class = "interpretation-box",
+                 h5("Interpretasi Model:"),
+                 textOutput("regression_interpretation")
+             )
           )
         ),
         
@@ -620,10 +622,10 @@ ui <- dashboardPage(
       # =================== METADATA ===================
       tabItem(tabName = "metadata",
         fluidRow(
-          box(width = 12, title = "Metadata Dataset SOVI", status = "primary", solidHeader = TRUE,
-            h3("📚 Social Vulnerability Index (SOVI) Dataset"),
+                     box(width = 12, title = "Metadata Dataset SOVI", status = "primary", solidHeader = TRUE,
+             h3("Social Vulnerability Index (SOVI) Dataset"),
             
-            h4("🔗 Sumber Data"),
+                         h4("Sumber Data"),
             tags$ul(
               tags$li(strong("Artikel:"), tags$a(href = metadata_url, "A county-level dataset for informing the United States social vulnerability to environmental hazards", target = "_blank")),
               tags$li(strong("Journal:"), "Scientific Data - Nature"),
@@ -631,10 +633,10 @@ ui <- dashboardPage(
               tags$li(strong("Tahun Publikasi:"), "2021")
             ),
             
-            h4("📊 Deskripsi Dataset"),
+                         h4("Deskripsi Dataset"),
             p("Dataset Social Vulnerability Index (SOVI) menyediakan data tingkat county di Amerika Serikat yang mengukur kerentanan sosial terhadap bahaya lingkungan. Dataset ini dikembangkan untuk membantu dalam perencanaan mitigasi bencana dan manajemen risiko."),
             
-            h4("🏗️ Struktur Data"),
+                         h4("Struktur Data"),
             tags$div(
               style = "background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #007bff;",
               tags$ul(
@@ -645,11 +647,11 @@ ui <- dashboardPage(
               )
             ),
             
-            h4("🔢 Variabel Utama"),
+                         h4("Variabel Utama"),
             DT::dataTableOutput("metadata_variables"),
             
             br(),
-            h4("📈 Metodologi SOVI"),
+                         h4("Metodologi SOVI"),
             tags$div(
               style = "background: #fff3cd; padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107;",
               p("Social Vulnerability Index (SOVI) dikembangkan menggunakan Principal Component Analysis (PCA) untuk mengintegrasikan multiple indikator sosial-ekonomi menjadi satu indeks komposit. Indeks ini mengidentifikasi area dengan tingkat kerentanan sosial tinggi yang membutuhkan perhatian khusus dalam perencanaan mitigasi bencana."),
@@ -663,7 +665,7 @@ ui <- dashboardPage(
               )
             ),
             
-            h4("💡 Aplikasi dan Kegunaan"),
+                         h4("Aplikasi dan Kegunaan"),
             tags$div(
               style = "background: #d1ecf1; padding: 15px; border-radius: 8px; border-left: 4px solid #17a2b8;",
               tags$ul(
@@ -675,14 +677,14 @@ ui <- dashboardPage(
               )
             ),
             
-            h4("📋 Sitasi"),
+                         h4("Sitasi"),
             tags$div(
               style = "background: #f8f9fa; padding: 15px; border-radius: 8px; font-family: monospace;",
               p("Flanagan, B.E., Hallisey, E.J., Adams, E. et al. A county-level dataset for informing the United States social vulnerability to environmental hazards. Sci Data 8, 290 (2021). https://doi.org/10.1038/s41597-021-01080-w")
             ),
             
             br(),
-            downloadButton("download_metadata_report", "📄 Download Metadata Lengkap", class = "btn-primary")
+                         downloadButton("download_metadata_report", "Download Metadata Lengkap", class = "btn-primary")
           )
         )
       )
@@ -747,14 +749,14 @@ server <- function(input, output, session) {
   
   observeEvent(input$load_default, {
     values$current_data <- original_data
-    showNotification("Data SOVI berhasil dimuat!", type = "success")
+         showNotification("Data SOVI berhasil dimuat!", type = "message")
   })
   
   observeEvent(input$file_upload, {
     if (!is.null(input$file_upload)) {
       tryCatch({
         values$current_data <- read.csv(input$file_upload$datapath)
-        showNotification("File berhasil diupload!", type = "success")
+                 showNotification("File berhasil diupload!", type = "message")
       }, error = function(e) {
         showNotification("Error loading file!", type = "error")
       })
@@ -788,7 +790,7 @@ server <- function(input, output, session) {
     }
     
     values$transformed_data <- data_copy
-    showNotification("Transformasi berhasil diterapkan!", type = "success")
+         showNotification("Transformasi berhasil diterapkan!", type = "message")
   })
   
   output$transform_interpretation <- renderText({
@@ -818,28 +820,28 @@ server <- function(input, output, session) {
     
     data_subset <- values$current_data[, input$desc_variables, drop = FALSE]
     
-    if (input$group_by_var != "none") {
-      desc_stats <- data_subset %>%
-        group_by(!!sym(input$group_by_var)) %>%
-        summarise_all(list(
-          Mean = ~mean(.x, na.rm = TRUE),
-          Median = ~median(.x, na.rm = TRUE),
-          SD = ~sd(.x, na.rm = TRUE),
-          Min = ~min(.x, na.rm = TRUE),
-          Max = ~max(.x, na.rm = TRUE)
-        ), .groups = 'drop')
-    } else {
-      desc_stats <- data_subset %>%
-        summarise_all(list(
-          Mean = ~mean(.x, na.rm = TRUE),
-          Median = ~median(.x, na.rm = TRUE),
-          SD = ~sd(.x, na.rm = TRUE),
-          Min = ~min(.x, na.rm = TRUE),
-          Max = ~max(.x, na.rm = TRUE),
-          Skewness = ~moments::skewness(.x, na.rm = TRUE),
-          Kurtosis = ~moments::kurtosis(.x, na.rm = TRUE)
-        ))
-    }
+         if (input$group_by_var != "none") {
+       desc_stats <- data_subset %>%
+         group_by(!!sym(input$group_by_var)) %>%
+         summarise_all(list(
+           Mean = ~mean(.x, na.rm = TRUE),
+           Median = ~median(.x, na.rm = TRUE),
+           SD = ~sd(.x, na.rm = TRUE),
+           Min = ~min(.x, na.rm = TRUE),
+           Max = ~max(.x, na.rm = TRUE)
+         ), .groups = 'drop')
+     } else {
+       desc_stats <- data_subset %>%
+         summarise_all(list(
+           Mean = ~mean(.x, na.rm = TRUE),
+           Median = ~median(.x, na.rm = TRUE),
+           SD = ~sd(.x, na.rm = TRUE),
+           Min = ~min(.x, na.rm = TRUE),
+           Max = ~max(.x, na.rm = TRUE),
+           Skewness = ~ifelse(length(.x) > 3, moments::skewness(.x, na.rm = TRUE), NA),
+           Kurtosis = ~ifelse(length(.x) > 3, moments::kurtosis(.x, na.rm = TRUE), NA)
+         ))
+     }
     
     output$descriptive_table <- DT::renderDataTable({
       DT::datatable(desc_stats, options = list(scrollX = TRUE)) %>%
