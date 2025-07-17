@@ -1,0 +1,260 @@
+---
+title: "Dasbor Analisis Data Statistik"
+output: html_document
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+# Chunk ini tidak akan terlihat di output
+# Memanggil semua fungsi dari file pustaka_fungsi.R
+source("pustaka_fungsi.R")
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+```{r}
+# Seluruh UI (User Interface) didefinisikan di dalam chunk ini
+dashboardPage(skin = "blue",
+  dashboardHeader(title = "Dashboard Analisis"),
+  
+  dashboardSidebar(
+    sidebarMenu(
+      id = "tabs",
+      fileInput("main_file", "Unggah Data CSV Anda", accept = ".csv"),
+      menuItem("Beranda", tabName = "beranda", icon = icon("home")),
+      menuItem("Eksplorasi Data", tabName = "eksplorasi", icon = icon("chart-bar")),
+      menuItem("Uji Asumsi", tabName = "asumsi", icon = icon("check-circle")),
+      menuItem("Statistik Inferensia", icon = icon("calculator"),
+               menuSubItem("Uji T Sampel", tabName = "uji_t")
+      ),
+      menuItem("Regresi Linear", tabName = "regresi", icon = icon("line-chart"))
+    )
+  ),
+  
+  dashboardBody(
+    tabItems(
+      # 1. BERANDA
+      tabItem("beranda",
+              h2("Selamat Datang di Dasbor Analisis Data Interaktif"),
+              box(width=12, title="Tentang Dasbor", status="primary", solidHeader=TRUE,
+                  p("Dasbor ini dirancang untuk memfasilitasi analisis data. Silakan unggah dataset Anda dalam format CSV menggunakan tombol di sidebar kiri untuk memulai.")
+              ),
+              h3("Data yang Anda Unggah:"),
+              DTOutput("tabel_data_awal")
+      ),
+      
+      # 2. EKSPLORASI DATA
+      tabItem("eksplorasi",
+              fluidRow(
+                box(width=4, title="Pengaturan", status="primary", solidHeader=TRUE,
+                    uiOutput("pilih_var_eksplorasi_ui"),
+                    selectInput("jenis_plot", "Pilih Jenis Plot", choices = c("Histogram", "Boxplot")),
+                    downloadButton("download_plot_eksplorasi", "Unduh Plot")
+                ),
+                box(width=8, title="Hasil Eksplorasi", status="warning", solidHeader=TRUE,
+                    tabsetPanel(
+                      tabPanel("Statistik Deskriptif", verbatimTextOutput("statistik_deskriptif")),
+                      tabPanel("Visualisasi", plotOutput("plot_eksplorasi"))
+                    )
+                )
+              )
+      ),
+      
+      # 3. UJI ASUMSI
+      tabItem("asumsi",
+              fluidRow(
+                 box(width=4, title="Pengaturan", status="primary", solidHeader=TRUE,
+                     h4("Uji Normalitas"),
+                     uiOutput("pilih_var_normalitas_ui"),
+                     actionButton("run_normalitas", "Jalankan"),
+                     hr(),
+                     h4("Uji Homogenitas"),
+                     uiOutput("pilih_var_homogenitas_ui"),
+                     uiOutput("pilih_grup_homogenitas_ui"),
+                     actionButton("run_homogenitas", "Jalankan")
+                 ),
+                 box(width=8, title="Hasil Uji Asumsi", status="warning", solidHeader=TRUE,
+                     h4("Hasil Uji Normalitas (Shapiro-Wilk)"),
+                     verbatimTextOutput("hasil_normalitas"),
+                     verbatimTextOutput("interpretasi_normalitas"),
+                     hr(),
+                     h4("Hasil Uji Homogenitas (Levene)"),
+                     verbatimTextOutput("hasil_homogenitas"),
+                     verbatimTextOutput("interpretasi_homogenitas")
+                 )
+              )
+      ),
+      
+      # 4. UJI T
+      tabItem("uji_t",
+              fluidRow(
+                box(width=4, title="Uji T Satu Sampel", status="primary", solidHeader=TRUE,
+                    uiOutput("pilih_var_t1_ui"),
+                    numericInput("mu_t1", "Nilai Hipotesis (μ₀)", value=0),
+                    actionButton("run_t1", "Jalankan Uji T"),
+                    downloadButton("download_hasil_t1", "Unduh Hasil")
+                ),
+                box(width=8, title="Hasil Uji T Satu Sampel", status="warning", solidHeader=TRUE,
+                    verbatimTextOutput("hasil_t1"),
+                    verbatimTextOutput("interpretasi_t1")
+                )
+              )
+      ),
+      
+      # 5. REGRESI
+      tabItem("regresi",
+              fluidRow(
+                box(width=4, title="Pengaturan Model Regresi", status="primary", solidHeader=TRUE,
+                    uiOutput("pilih_var_dependen_ui"),
+                    uiOutput("pilih_var_independen_ui"),
+                    actionButton("run_regresi", "Bangun Model"),
+                    downloadButton("download_plot_regresi", "Unduh Plot Diagnostik")
+                ),
+                box(width=8, title="Hasil Regresi Linear Berganda", status="warning", solidHeader=TRUE,
+                    tabsetPanel(
+                       tabPanel("Ringkasan Model", verbatimTextOutput("hasil_regresi")),
+                       tabPanel("Plot Diagnostik", plotOutput("plot_regresi"))
+                    )
+                )
+              )
+      )
+    )
+  )
+)
+```
+
+
+```{r}
+# ===== DATA REAKTIF =====
+data_input <- reactive({
+  req(input$main_file)
+  read.csv(input$main_file$datapath, stringsAsFactors = TRUE)
+})
+
+output$tabel_data_awal <- renderDT({
+  datatable(data_input(), options = list(scrollX = TRUE, pageLength = 5))
+})
+
+# Obyek untuk menampung nama kolom numerik dan kategorik
+kolom_numerik <- reactive(names(data_input())[sapply(data_input(), is.numeric)])
+kolom_kategorik <- reactive(names(data_input())[sapply(data_input(), is.factor) || sapply(data_input(), is.character)])
+
+
+# ===== RENDER UI DINAMIS =====
+# UI untuk menu Eksplorasi
+output$pilih_var_eksplorasi_ui <- renderUI({
+  selectInput("var_eksplorasi", "Pilih Variabel Numerik", choices = kolom_numerik())
+})
+
+# UI untuk menu Asumsi
+output$pilih_var_normalitas_ui <- renderUI({
+  selectInput("var_normalitas", "Pilih Variabel", choices = kolom_numerik())
+})
+output$pilih_var_homogenitas_ui <- renderUI({
+  selectInput("var_homogenitas", "Variabel Dependen (Numerik)", choices = kolom_numerik())
+})
+output$pilih_grup_homogenitas_ui <- renderUI({
+  selectInput("grup_homogenitas", "Variabel Grup (Kategorik)", choices = kolom_kategorik())
+})
+
+# UI untuk menu Uji T
+output$pilih_var_t1_ui <- renderUI({
+  selectInput("var_t1", "Pilih Variabel", choices = kolom_numerik())
+})
+
+# UI untuk menu Regresi
+output$pilih_var_dependen_ui <- renderUI({
+  selectInput("var_dependen", "Pilih Variabel Dependen (Y)", choices = kolom_numerik())
+})
+output$pilih_var_independen_ui <- renderUI({
+  selectInput("var_independen", "Pilih Variabel Independen (X)", choices = kolom_numerik(), multiple = TRUE)
+})
+
+
+# ===== LOGIKA SERVER: EKSPLORASI =====
+plot_obj_eksplorasi <- reactive({
+  req(input$var_eksplorasi)
+  p <- ggplot(data_input(), aes_string(x = input$var_eksplorasi)) + theme_light() + labs(x=input$var_eksplorasi)
+  if(input$jenis_plot == "Histogram") {
+    p <- p + geom_histogram(aes(y=..density..), bins=20, fill="skyblue", color="black") + geom_density(alpha=.2, fill="#FF6666")
+  } else { # Boxplot
+    p <- p + geom_boxplot(fill="lightgreen")
+  }
+  p
+})
+output$plot_eksplorasi <- renderPlot({
+  plot_obj_eksplorasi()
+})
+output$statistik_deskriptif <- renderPrint({
+  req(input$var_eksplorasi)
+  summary(data_input()[[input$var_eksplorasi]])
+})
+output$download_plot_eksplorasi <- downloadHandler(
+  filename = function() { paste0("plot_eksplorasi_", input$var_eksplorasi, ".png") },
+  content = function(file) { ggsave(file, plot = plot_obj_eksplorasi(), device = "png") }
+)
+
+
+# ===== LOGIKA SERVER: ASUMSI =====
+# Normalitas
+hasil_norm <- eventReactive(input$run_normalitas, {
+  lakukan_uji_normalitas(data_input()[[input$var_normalitas]])
+})
+output$hasil_normalitas <- renderPrint({ hasil_norm() })
+output$interpretasi_normalitas <- renderPrint({ cat(interpretasi_normalitas(hasil_norm())) })
+
+# Homogenitas
+formula_homogenitas <- eventReactive(input$run_homogenitas, {
+  as.formula(paste(input$var_homogenitas, "~", input$grup_homogenitas))
+})
+hasil_homog <- eventReactive(input$run_homogenitas, {
+  lakukan_uji_homogenitas(data_input(), formula_homogenitas())
+})
+output$hasil_homogenitas <- renderPrint({ hasil_homog() })
+output$interpretasi_homogenitas <- renderPrint({ cat(interpretasi_homogenitas(hasil_homog())) })
+
+
+# ===== LOGIKA SERVER: UJI T =====
+hasil_t1_obj <- eventReactive(input$run_t1, {
+  lakukan_uji_t_1sampel(data_input()[[input$var_t1]], input$mu_t1)
+})
+output$hasil_t1 <- renderPrint({ hasil_t1_obj() })
+output$interpretasi_t1 <- renderPrint({
+  cat(interpretasi_t_1sampel(hasil_t1_obj(), input$mu_t1))
+})
+output$download_hasil_t1 <- downloadHandler(
+  filename = function() { paste0("uji_t_1_sampel_", input$var_t1, ".txt") },
+  content = function(file) {
+    sink(file)
+    print(hasil_t1_obj())
+    cat("\n---\n")
+    cat(interpretasi_t_1sampel(hasil_t1_obj(), input$mu_t1))
+    sink()
+  }
+)
+
+# ===== LOGIKA SERVER: REGRESI =====
+formula_regresi <- eventReactive(input$run_regresi, {
+  req(input$var_independen)
+  as.formula(paste(input$var_dependen, "~", paste(input$var_independen, collapse = "+")))
+})
+model_regresi_obj <- eventReactive(input$run_regresi, {
+  lm(formula_regresi(), data = data_input())
+})
+output$hasil_regresi <- renderPrint({
+  summary(model_regresi_obj())
+})
+plot_regresi_obj <- reactive({
+  plot_diagnostik_regresi(model_regresi_obj())
+})
+output$plot_regresi <- renderPlot({
+  plot_diagnostik_regresi(model_regresi_obj())
+})
+output$download_plot_regresi <- downloadHandler(
+  filename = function() { "plot_diagnostik_regresi.png" },
+  content = function(file) {
+    png(file, width = 800, height = 600)
+    plot_diagnostik_regresi(model_regresi_obj())
+    dev.off()
+  }
+)
+```
+
