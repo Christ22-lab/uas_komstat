@@ -1109,26 +1109,26 @@ server <- function(input, output, session) {
         interpretasi <- paste0(
           "📊 INTERPRETASI STATISTIK DESKRIPTIF:\n\n",
           "Analisis melibatkan ", length(input$desc_variables), " variabel numerik.\n\n",
-          "UKURAN PEMUSATAN:\n",
-          "• Mean (rata-rata): Nilai rata-rata dari semua observasi\n",
-          "• Median: Nilai tengah setelah data diurutkan (lebih robust terhadap outlier)\n",
+          "📈 UKURAN PEMUSATAN:\n\n",
+          "• Mean (rata-rata): Nilai rata-rata dari semua observasi\n\n",
+          "• Median: Nilai tengah setelah data diurutkan (lebih robust terhadap outlier)\n\n",
           "• Mode: Nilai yang paling sering muncul\n\n",
-          "UKURAN PENYEBARAN:\n",
-          "• Standard Deviation (SD): Mengukur seberapa jauh data tersebar dari mean\n",
-          "• Variance: Kuadrat dari standard deviation\n",
+          "📏 UKURAN PENYEBARAN:\n\n",
+          "• Standard Deviation (SD): Mengukur seberapa jauh data tersebar dari mean\n\n",
+          "• Variance: Kuadrat dari standard deviation\n\n",
           "• Range: Selisih nilai maksimum dan minimum\n\n",
-          "UKURAN BENTUK DISTRIBUSI:\n",
-          "• Skewness: Mengukur kemiringan distribusi\n",
-          "  - Nilai ≈ 0: Distribusi simetris\n",
-          "  - Nilai > 1: Condong ke kanan (right-skewed)\n",
-          "  - Nilai < -1: Condong ke kiri (left-skewed)\n",
-          "• Kurtosis: Mengukur 'ketajaman' puncak distribusi\n",
-          "  - Nilai ≈ 3: Distribusi normal\n",
-          "  - Nilai > 3: Lebih tajam dari normal (leptokurtic)\n",
+          "📐 UKURAN BENTUK DISTRIBUSI:\n\n",
+          "• Skewness: Mengukur kemiringan distribusi\n\n",
+          "  - Nilai ≈ 0: Distribusi simetris\n\n",
+          "  - Nilai > 1: Condong ke kanan (right-skewed)\n\n",
+          "  - Nilai < -1: Condong ke kiri (left-skewed)\n\n",
+          "• Kurtosis: Mengukur 'ketajaman' puncak distribusi\n\n",
+          "  - Nilai ≈ 3: Distribusi normal\n\n",
+          "  - Nilai > 3: Lebih tajam dari normal (leptokurtic)\n\n",
           "  - Nilai < 3: Lebih datar dari normal (platykurtic)\n\n",
-          "TIPS INTERPRETASI:\n",
-          "• Bandingkan mean vs median untuk deteksi skewness\n",
-          "• CV (Coefficient of Variation) = SD/Mean * 100% untuk perbandingan variabilitas relatif\n",
+          "💡 TIPS INTERPRETASI:\n\n",
+          "• Bandingkan mean vs median untuk deteksi skewness\n\n",
+          "• CV (Coefficient of Variation) = SD/Mean * 100% untuk perbandingan variabilitas relatif\n\n",
           "• Gunakan plot untuk visualisasi yang lebih baik"
         )
         return(interpretasi)
@@ -1440,11 +1440,16 @@ server <- function(input, output, session) {
       }
       
       output$normality_result <- renderText({
-        paste("Shapiro-Wilk Test (atau Anderson-Darling untuk n>5000)",
-              "\nStatistik:", round(norm_test$statistic, 4),
-              "\np-value:", format(norm_test$p.value, scientific = TRUE),
-              "\nHipotesis H0: Data berdistribusi normal",
-              "\nHipotesis H1: Data tidak berdistribusi normal")
+        paste0(
+          "🧪 HIPOTESIS UJI NORMALITAS:\n\n",
+          "H₀: Data berdistribusi normal\n",
+          "H₁: Data tidak berdistribusi normal\n\n",
+          "📊 HASIL UJI NORMALITAS:\n\n",
+          "Test: Shapiro-Wilk Test (atau Anderson-Darling untuk n>5000)\n\n",
+          "Statistik: ", round(norm_test$statistic, 4), "\n\n",
+          "p-value: ", format(norm_test$p.value, scientific = TRUE), "\n\n",
+          "Sampel size: ", length(var_data)
+        )
       })
       
       output$normality_interpretation <- renderText({
@@ -1453,21 +1458,21 @@ server <- function(input, output, session) {
         detailed_interp <- paste0(
           "🔍 INTERPRETASI UJI NORMALITAS LENGKAP:\n\n",
           basic_interp, "\n\n",
-          "PENJELASAN STATISTIK:\n",
-          "• Test Statistic: ", round(norm_test$statistic, 4), "\n",
-          "• p-value: ", format(norm_test$p.value, scientific = TRUE), "\n",
+          "📈 PENJELASAN STATISTIK:\n\n",
+          "• Test Statistic: ", round(norm_test$statistic, 4), "\n\n",
+          "• p-value: ", format(norm_test$p.value, scientific = TRUE), "\n\n",
           "• Sampel size: ", length(var_data), "\n\n",
-          "KRITERIA KEPUTUSAN:\n",
-          "• α = 0.05 (tingkat signifikansi)\n",
-          "• Jika p-value > 0.05: Gagal tolak H₀ (data normal)\n",
+          "⚖️ KRITERIA KEPUTUSAN:\n\n",
+          "• α = 0.05 (tingkat signifikansi)\n\n",
+          "• Jika p-value > 0.05: Gagal tolak H₀ (data normal)\n\n",
           "• Jika p-value ≤ 0.05: Tolak H₀ (data tidak normal)\n\n",
-          "IMPLIKASI UNTUK ANALISIS:\n",
+          "📋 IMPLIKASI UNTUK ANALISIS:\n\n",
           if (norm_test$p.value > 0.05) {
-            "✓ Data dapat digunakan untuk uji parametrik (t-test, ANOVA, regresi)\n✓ Asumsi normalitas terpenuhi\n✓ Hasil statistik inferensia akan valid"
+            "✓ Data dapat digunakan untuk uji parametrik (t-test, ANOVA, regresi)\n\n✓ Asumsi normalitas terpenuhi\n\n✓ Hasil statistik inferensia akan valid"
           } else {
-            "⚠ Pertimbangkan transformasi data (log, sqrt, dll)\n⚠ Gunakan uji non-parametrik sebagai alternatif\n⚠ Periksa outlier yang mungkin mempengaruhi distribusi"
+            "⚠ Pertimbangkan transformasi data (log, sqrt, dll)\n\n⚠ Gunakan uji non-parametrik sebagai alternatif\n\n⚠ Periksa outlier yang mungkin mempengaruhi distribusi"
           }, "\n\n",
-          "CATATAN: Untuk sampel besar (n>30), CLT berlaku sehingga normalitas kurang kritis."
+          "💡 CATATAN: Untuk sampel besar (n>30), CLT berlaku sehingga normalitas kurang kritis."
         )
         
         return(detailed_interp)
@@ -1486,13 +1491,17 @@ server <- function(input, output, session) {
         levene_test <- car::leveneTest(value ~ group, data = test_data)
         
         output$homogeneity_result <- renderText({
-          paste("Levene's Test for Homogeneity of Variances",
-                "\nF-statistic:", round(levene_test$`F value`[1], 4),
-                "\ndf1:", levene_test$Df[1],
-                "\ndf2:", levene_test$Df[2],
-                "\np-value:", format(levene_test$`Pr(>F)`[1], scientific = TRUE),
-                "\nHipotesis H0: Varians antar kelompok homogen",
-                "\nHipotesis H1: Varians antar kelompok tidak homogen")
+          paste0(
+            "🧪 HIPOTESIS UJI HOMOGENITAS:\n\n",
+            "H₀: Varians antar kelompok homogen (σ₁² = σ₂² = ... = σₖ²)\n",
+            "H₁: Varians antar kelompok tidak homogen\n\n",
+            "📊 HASIL UJI HOMOGENITAS (LEVENE'S TEST):\n\n",
+            "F-statistic: ", round(levene_test$`F value`[1], 4), "\n\n",
+            "df1: ", levene_test$Df[1], "\n\n",
+            "df2: ", levene_test$Df[2], "\n\n",
+            "p-value: ", format(levene_test$`Pr(>F)`[1], scientific = TRUE), "\n\n",
+            "Jumlah grup: ", length(unique(test_data$group))
+          )
         })
         
         output$homogeneity_interpretation <- renderText({
@@ -1501,22 +1510,22 @@ server <- function(input, output, session) {
           detailed_interp <- paste0(
             "🔍 INTERPRETASI UJI HOMOGENITAS VARIANS:\n\n",
             basic_interp, "\n\n",
-            "PENJELASAN STATISTIK:\n",
-            "• F-statistic: ", round(levene_test$`F value`[1], 4), "\n",
-            "• df1: ", levene_test$Df[1], ", df2: ", levene_test$Df[2], "\n",
-            "• p-value: ", format(levene_test$`Pr(>F)`[1], scientific = TRUE), "\n",
+            "📈 PENJELASAN STATISTIK:\n\n",
+            "• F-statistic: ", round(levene_test$`F value`[1], 4), "\n\n",
+            "• df1: ", levene_test$Df[1], ", df2: ", levene_test$Df[2], "\n\n",
+            "• p-value: ", format(levene_test$`Pr(>F)`[1], scientific = TRUE), "\n\n",
             "• Jumlah grup: ", length(unique(test_data$group)), "\n\n",
-            "KRITERIA KEPUTUSAN:\n",
-            "• H₀: σ₁² = σ₂² = ... = σₖ² (varians sama)\n",
-            "• H₁: Minimal ada satu varians berbeda\n",
+            "⚖️ KRITERIA KEPUTUSAN:\n\n",
+            "• H₀: σ₁² = σ₂² = ... = σₖ² (varians sama)\n\n",
+            "• H₁: Minimal ada satu varians berbeda\n\n",
             "• α = 0.05 (tingkat signifikansi)\n\n",
-            "IMPLIKASI UNTUK ANALISIS:\n",
+            "📋 IMPLIKASI UNTUK ANALISIS:\n\n",
             if (levene_test$`Pr(>F)`[1] > 0.05) {
-              "✓ Dapat menggunakan ANOVA klasik\n✓ Pooled variance t-test valid\n✓ Asumsi homoskedastisitas terpenuhi"
+              "✓ Dapat menggunakan ANOVA klasik\n\n✓ Pooled variance t-test valid\n\n✓ Asumsi homoskedastisitas terpenuhi"
             } else {
-              "⚠ Gunakan Welch's ANOVA (tidak asumsikan varians sama)\n⚠ Separate variance t-test lebih tepat\n⚠ Pertimbangkan transformasi data\n⚠ Gunakan uji non-parametrik (Kruskal-Wallis)"
+              "⚠ Gunakan Welch's ANOVA (tidak asumsikan varians sama)\n\n⚠ Separate variance t-test lebih tepat\n\n⚠ Pertimbangkan transformasi data\n\n⚠ Gunakan uji non-parametrik (Kruskal-Wallis)"
             }, "\n\n",
-            "CATATAN: Levene's test robust terhadap non-normalitas dibanding Bartlett's test."
+            "💡 CATATAN: Levene's test robust terhadap non-normalitas dibanding Bartlett's test."
           )
           
           return(detailed_interp)
@@ -1569,13 +1578,18 @@ server <- function(input, output, session) {
       test_result <- t.test(var_data, mu = input$test_value, conf.level = input$confidence_level)
       
       output$mean_test_result <- renderText({
-        paste("One Sample t-test",
-              "\nt-statistic:", round(test_result$statistic, 4),
-              "\ndf:", test_result$parameter,
-              "\np-value:", format(test_result$p.value, scientific = TRUE),
-              "\nConfidence Interval:", paste(round(test_result$conf.int, 4), collapse = " - "),
-              "\nSample Mean:", round(test_result$estimate, 4),
-              "\nTest Value:", input$test_value)
+        paste0(
+          "🧪 HIPOTESIS UJI T SATU SAMPEL:\n\n",
+          "H₀: μ = ", input$test_value, " (rata-rata populasi sama dengan nilai uji)\n",
+          "H₁: μ ≠ ", input$test_value, " (rata-rata populasi berbeda dari nilai uji)\n\n",
+          "📊 HASIL UJI T SATU SAMPEL:\n\n",
+          "t-statistic: ", round(test_result$statistic, 4), "\n\n",
+          "df: ", test_result$parameter, "\n\n",
+          "p-value: ", format(test_result$p.value, scientific = TRUE), "\n\n",
+          "Confidence Interval: [", paste(round(test_result$conf.int, 4), collapse = ", "), "]\n\n",
+          "Sample Mean: ", round(test_result$estimate, 4), "\n\n",
+          "Test Value: ", input$test_value
+        )
       })
       
     } else if (input$mean_test_type == "two_sample" && !is.null(input$group_var_mean)) {
@@ -1591,13 +1605,18 @@ server <- function(input, output, session) {
         test_result <- t.test(group1_data, group2_data, conf.level = input$confidence_level)
         
         output$mean_test_result <- renderText({
-          paste("Two Sample t-test",
-                "\nt-statistic:", round(test_result$statistic, 4),
-                "\ndf:", round(test_result$parameter, 2),
-                "\np-value:", format(test_result$p.value, scientific = TRUE),
-                "\nConfidence Interval:", paste(round(test_result$conf.int, 4), collapse = " - "),
-                "\nMean Group 1 (", groups[1], "):", round(test_result$estimate[1], 4),
-                "\nMean Group 2 (", groups[2], "):", round(test_result$estimate[2], 4))
+          paste0(
+            "🧪 HIPOTESIS UJI T DUA SAMPEL:\n\n",
+            "H₀: μ₁ = μ₂ (rata-rata kedua kelompok sama)\n",
+            "H₁: μ₁ ≠ μ₂ (rata-rata kedua kelompok berbeda)\n\n",
+            "📊 HASIL UJI T DUA SAMPEL:\n\n",
+            "t-statistic: ", round(test_result$statistic, 4), "\n\n",
+            "df: ", round(test_result$parameter, 2), "\n\n",
+            "p-value: ", format(test_result$p.value, scientific = TRUE), "\n\n",
+            "Confidence Interval: [", paste(round(test_result$conf.int, 4), collapse = ", "), "]\n\n",
+            "Mean Group 1 (", groups[1], "): ", round(test_result$estimate[1], 4), "\n\n",
+            "Mean Group 2 (", groups[2], "): ", round(test_result$estimate[2], 4)
+          )
         })
       }
     }
@@ -1609,17 +1628,21 @@ server <- function(input, output, session) {
         detailed_interp <- paste0(
           "📊 INTERPRETASI UJI RATA-RATA LENGKAP:\n\n",
           basic_interp, "\n\n",
-          "PENJELASAN STATISTIK:\n",
-          "• t-statistic: ", round(test_result$statistic, 4), "\n",
-          "• df: ", round(test_result$parameter, 2), "\n",
-          "• p-value: ", format(test_result$p.value, scientific = TRUE), "\n",
+          "📈 PENJELASAN STATISTIK:\n\n",
+          "• t-statistic: ", round(test_result$statistic, 4), "\n\n",
+          "• df: ", round(test_result$parameter, 2), "\n\n",
+          "• p-value: ", format(test_result$p.value, scientific = TRUE), "\n\n",
           "• Confidence Interval: [", paste(round(test_result$conf.int, 4), collapse = ", "), "]\n\n",
-          "EFFECT SIZE: Cohen's d ≈ ", round(abs(test_result$statistic) / sqrt(test_result$parameter + 1), 3), "\n",
-          "KESIMPULAN: ",
+          "📏 EFFECT SIZE: Cohen's d ≈ ", round(abs(test_result$statistic) / sqrt(test_result$parameter + 1), 3), "\n\n",
+          "⚖️ KRITERIA KEPUTUSAN:\n\n",
+          "• α = 0.05 (tingkat signifikansi)\n\n",
+          "• Jika p-value < 0.05: Tolak H₀\n\n",
+          "• Jika p-value ≥ 0.05: Gagal tolak H₀\n\n",
+          "🎯 KESIMPULAN: ",
           if (test_result$p.value < 0.05) {
-            "Terdapat perbedaan signifikan secara statistik."
+            "Terdapat perbedaan signifikan secara statistik.\n\n✓ Hasil mendukung H₁\n\n✓ Perbedaan tidak disebabkan oleh kebetulan"
           } else {
-            "Tidak terdapat perbedaan signifikan secara statistik."
+            "Tidak terdapat perbedaan signifikan secara statistik.\n\n✓ Hasil mendukung H₀\n\n✓ Perbedaan bisa disebabkan oleh kebetulan"
           }
         )
         
@@ -1661,7 +1684,31 @@ server <- function(input, output, session) {
       anova_summary <- summary(anova_model)
       
       output$anova_result <- renderText({
-        capture.output(print(anova_summary))
+        f_stat <- anova_summary[[1]]$`F value`[1]
+        p_val <- anova_summary[[1]]$`Pr(>F)`[1]
+        df1 <- anova_summary[[1]]$Df[1]
+        df2 <- anova_summary[[1]]$Df[2]
+        sum_sq_between <- anova_summary[[1]]$`Sum Sq`[1]
+        sum_sq_within <- anova_summary[[1]]$`Sum Sq`[2]
+        mean_sq_between <- anova_summary[[1]]$`Mean Sq`[1]
+        mean_sq_within <- anova_summary[[1]]$`Mean Sq`[2]
+        
+        paste0(
+          "🧪 HIPOTESIS UJI ANOVA SATU ARAH:\n\n",
+          "H₀: μ₁ = μ₂ = ... = μₖ (semua rata-rata grup sama)\n",
+          "H₁: Minimal ada satu rata-rata grup yang berbeda\n\n",
+          "📊 HASIL UJI ANOVA SATU ARAH:\n\n",
+          "Sumber Variasi: Antar Grup\n",
+          "  Sum of Squares: ", round(sum_sq_between, 4), "\n",
+          "  df: ", df1, "\n",
+          "  Mean Square: ", round(mean_sq_between, 4), "\n\n",
+          "Sumber Variasi: Dalam Grup (Error)\n",
+          "  Sum of Squares: ", round(sum_sq_within, 4), "\n",
+          "  df: ", df2, "\n",
+          "  Mean Square: ", round(mean_sq_within, 4), "\n\n",
+          "F-statistic: ", round(f_stat, 4), "\n\n",
+          "p-value: ", format(p_val, scientific = TRUE)
+        )
       })
       
       output$anova_interpretation <- renderText({
@@ -1675,24 +1722,25 @@ server <- function(input, output, session) {
         detailed_interp <- paste0(
           "📊 INTERPRETASI ANOVA LENGKAP:\n\n",
           basic_interp, "\n\n",
-          "PENJELASAN STATISTIK:\n",
-          "• F-statistic: ", round(f_stat, 4), "\n",
-          "• df antara grup: ", df1, "\n",
-          "• df dalam grup: ", df2, "\n",
+          "📈 PENJELASAN STATISTIK:\n\n",
+          "• F-statistic: ", round(f_stat, 4), "\n\n",
+          "• df antara grup: ", df1, "\n\n",
+          "• df dalam grup: ", df2, "\n\n",
           "• p-value: ", format(p_val, scientific = TRUE), "\n\n",
-          "HIPOTESIS:\n",
-          "• H₀: μ₁ = μ₂ = ... = μₖ (semua rata-rata grup sama)\n",
-          "• H₁: Minimal ada satu rata-rata grup yang berbeda\n\n",
-          "EFFECT SIZE:\n",
-          "• Eta-squared (η²) ≈ ", round(anova_summary[[1]]$`Sum Sq`[1] / sum(anova_summary[[1]]$`Sum Sq`), 3), "\n",
-          "  - 0.01: Small effect\n",
-          "  - 0.06: Medium effect\n",
+          "📏 EFFECT SIZE:\n\n",
+          "• Eta-squared (η²) ≈ ", round(anova_summary[[1]]$`Sum Sq`[1] / sum(anova_summary[[1]]$`Sum Sq`), 3), "\n\n",
+          "  - 0.01: Small effect\n\n",
+          "  - 0.06: Medium effect\n\n",
           "  - 0.14: Large effect\n\n",
-          "KESIMPULAN:\n",
+          "⚖️ KRITERIA KEPUTUSAN:\n\n",
+          "• α = 0.05 (tingkat signifikansi)\n\n",
+          "• Jika p-value < 0.05: Tolak H₀\n\n",
+          "• Jika p-value ≥ 0.05: Gagal tolak H₀\n\n",
+          "🎯 KESIMPULAN:\n\n",
           if (p_val < 0.05) {
-            "Terdapat perbedaan signifikan antar kelompok. Lanjutkan dengan uji post-hoc untuk mengetahui kelompok mana yang berbeda."
+            "Terdapat perbedaan signifikan antar kelompok.\n\n✓ Hasil mendukung H₁\n\n✓ Lanjutkan dengan uji post-hoc untuk mengetahui kelompok mana yang berbeda."
           } else {
-            "Tidak terdapat perbedaan signifikan antar kelompok. Semua kelompok memiliki rata-rata yang sama secara statistik."
+            "Tidak terdapat perbedaan signifikan antar kelompok.\n\n✓ Hasil mendukung H₀\n\n✓ Semua kelompok memiliki rata-rata yang sama secara statistik."
           }
         )
         
@@ -1983,6 +2031,166 @@ server <- function(input, output, session) {
         
         ggsave(file, plot = p_map, device = "jpeg", width = 12, height = 8, dpi = 300)
       }
+    }
+  )
+  
+  # Download handler for assumption tests report
+  output$download_assumption_report <- downloadHandler(
+    filename = function() {
+      paste0("laporan_uji_asumsi_", Sys.Date(), ".docx")
+    },
+    content = function(file) {
+      doc <- officer::read_docx()
+      doc <- officer::body_add_par(doc, "LAPORAN UJI ASUMSI", style = "heading 1")
+      doc <- officer::body_add_par(doc, paste("Tanggal:", Sys.Date()))
+      doc <- officer::body_add_par(doc, "")
+      
+      if (!is.null(input$assumption_var)) {
+        doc <- officer::body_add_par(doc, "VARIABEL YANG DIUJI:", style = "heading 2")
+        doc <- officer::body_add_par(doc, input$assumption_var)
+        doc <- officer::body_add_par(doc, "")
+        
+        if (input$test_normality) {
+          doc <- officer::body_add_par(doc, "UJI NORMALITAS:", style = "heading 2")
+          doc <- officer::body_add_par(doc, "Hasil uji normalitas menunjukkan apakah data mengikuti distribusi normal.")
+          doc <- officer::body_add_par(doc, "")
+        }
+        
+        if (input$test_homogeneity) {
+          doc <- officer::body_add_par(doc, "UJI HOMOGENITAS:", style = "heading 2")
+          doc <- officer::body_add_par(doc, "Hasil uji homogenitas menunjukkan apakah varians antar kelompok sama.")
+          doc <- officer::body_add_par(doc, "")
+        }
+      }
+      
+      print(doc, target = file)
+    }
+  )
+  
+  # Download handler for mean test report
+  output$download_mean_test <- downloadHandler(
+    filename = function() {
+      paste0("laporan_uji_rata_rata_", Sys.Date(), ".docx")
+    },
+    content = function(file) {
+      doc <- officer::read_docx()
+      doc <- officer::body_add_par(doc, "LAPORAN UJI RATA-RATA", style = "heading 1")
+      doc <- officer::body_add_par(doc, paste("Tanggal:", Sys.Date()))
+      doc <- officer::body_add_par(doc, "")
+      
+      if (!is.null(input$mean_test_var)) {
+        doc <- officer::body_add_par(doc, "VARIABEL YANG DIUJI:", style = "heading 2")
+        doc <- officer::body_add_par(doc, input$mean_test_var)
+        doc <- officer::body_add_par(doc, "")
+        
+        doc <- officer::body_add_par(doc, "JENIS UJI:", style = "heading 2")
+        if (input$mean_test_type == "one_sample") {
+          doc <- officer::body_add_par(doc, "Uji t satu sampel")
+        } else {
+          doc <- officer::body_add_par(doc, "Uji t dua sampel")
+        }
+        doc <- officer::body_add_par(doc, "")
+        
+        doc <- officer::body_add_par(doc, "INTERPRETASI:", style = "heading 2")
+        doc <- officer::body_add_par(doc, "Hasil uji menunjukkan apakah terdapat perbedaan rata-rata yang signifikan secara statistik.")
+      }
+      
+      print(doc, target = file)
+    }
+  )
+  
+  # Download handler for ANOVA report
+  output$download_anova_test <- downloadHandler(
+    filename = function() {
+      paste0("laporan_anova_", Sys.Date(), ".docx")
+    },
+    content = function(file) {
+      doc <- officer::read_docx()
+      doc <- officer::body_add_par(doc, "LAPORAN ANALISIS VARIANS (ANOVA)", style = "heading 1")
+      doc <- officer::body_add_par(doc, paste("Tanggal:", Sys.Date()))
+      doc <- officer::body_add_par(doc, "")
+      
+      if (!is.null(input$anova_dependent)) {
+        doc <- officer::body_add_par(doc, "VARIABEL DEPENDEN:", style = "heading 2")
+        doc <- officer::body_add_par(doc, input$anova_dependent)
+        doc <- officer::body_add_par(doc, "")
+        
+        doc <- officer::body_add_par(doc, "FAKTOR:", style = "heading 2")
+        doc <- officer::body_add_par(doc, input$anova_factor1)
+        if (!is.null(input$anova_factor2)) {
+          doc <- officer::body_add_par(doc, paste("Faktor 2:", input$anova_factor2))
+        }
+        doc <- officer::body_add_par(doc, "")
+        
+        doc <- officer::body_add_par(doc, "INTERPRETASI:", style = "heading 2")
+        doc <- officer::body_add_par(doc, "ANOVA menguji apakah terdapat perbedaan rata-rata antar kelompok/grup.")
+      }
+      
+      print(doc, target = file)
+    }
+  )
+  
+  # Download handler for regression report
+  output$download_regression_report <- downloadHandler(
+    filename = function() {
+      paste0("laporan_regresi_", Sys.Date(), ".docx")
+    },
+    content = function(file) {
+      doc <- officer::read_docx()
+      doc <- officer::body_add_par(doc, "LAPORAN REGRESI LINEAR BERGANDA", style = "heading 1")
+      doc <- officer::body_add_par(doc, paste("Tanggal:", Sys.Date()))
+      doc <- officer::body_add_par(doc, "")
+      
+      if (!is.null(input$reg_dependent)) {
+        doc <- officer::body_add_par(doc, "VARIABEL DEPENDEN:", style = "heading 2")
+        doc <- officer::body_add_par(doc, input$reg_dependent)
+        doc <- officer::body_add_par(doc, "")
+        
+        if (!is.null(input$reg_independent)) {
+          doc <- officer::body_add_par(doc, "VARIABEL INDEPENDEN:", style = "heading 2")
+          doc <- officer::body_add_par(doc, paste(input$reg_independent, collapse = ", "))
+          doc <- officer::body_add_par(doc, "")
+        }
+        
+        doc <- officer::body_add_par(doc, "INTERPRETASI:", style = "heading 2")
+        doc <- officer::body_add_par(doc, "Analisis regresi linear berganda menunjukkan hubungan antara variabel dependen dengan variabel independen.")
+      }
+      
+      print(doc, target = file)
+    }
+  )
+  
+  # Download handler for metadata report
+  output$download_metadata_report <- downloadHandler(
+    filename = function() {
+      paste0("metadata_lengkap_", Sys.Date(), ".docx")
+    },
+    content = function(file) {
+      doc <- officer::read_docx()
+      doc <- officer::body_add_par(doc, "METADATA LENGKAP DASHBOARD STATISTIK TERPADU", style = "heading 1")
+      doc <- officer::body_add_par(doc, paste("Tanggal:", Sys.Date()))
+      doc <- officer::body_add_par(doc, "")
+      
+      doc <- officer::body_add_par(doc, "INFORMASI UMUM:", style = "heading 2")
+      doc <- officer::body_add_par(doc, "Dashboard: Dashboard Statistik Terpadu")
+      doc <- officer::body_add_par(doc, "Versi: 1.0")
+      doc <- officer::body_add_par(doc, "Tanggal Pembuatan: 2024")
+      doc <- officer::body_add_par(doc, "")
+      
+      doc <- officer::body_add_par(doc, "FITUR UTAMA:", style = "heading 2")
+      doc <- officer::body_add_par(doc, "• Manajemen Data (Upload, Transform)")
+      doc <- officer::body_add_par(doc, "• Eksplorasi Data (Statistik Deskriptif, Visualisasi, Peta)")
+      doc <- officer::body_add_par(doc, "• Uji Asumsi (Normalitas, Homogenitas)")
+      doc <- officer::body_add_par(doc, "• Statistik Inferensia (t-test, ANOVA)")
+      doc <- officer::body_add_par(doc, "• Regresi Linear Berganda")
+      doc <- officer::body_add_par(doc, "• Download Multi-format (Word, Excel, JPG)")
+      doc <- officer::body_add_par(doc, "")
+      
+      doc <- officer::body_add_par(doc, "SUMBER DATA:", style = "heading 2")
+      doc <- officer::body_add_par(doc, "Data SOVI (Social Vulnerability Index) dari GitHub")
+      doc <- officer::body_add_par(doc, "URL: https://raw.githubusercontent.com/uva-bi-sdad/sdc.geographies/main/VA/State/data/distribution/va_geo_ffxco_2020_2020_sovi.csv")
+      
+      print(doc, target = file)
     }
   )
   
