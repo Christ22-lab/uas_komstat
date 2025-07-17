@@ -301,24 +301,33 @@ ui <- dashboardPage(
             conditionalPanel(
               condition = "input.transform_method == 'custom'",
               h5("Kategorisasi Custom - Mengubah Data Kontinyu ke Kategorik:"),
-              p(strong("Penjelasan:"), "Masukkan nilai batas (breakpoint) untuk membagi data kontinyu menjadi kategori."),
+              p(strong("Penjelasan:"), "Masukkan nilai batas (breakpoint) dan nama kategori untuk membagi data kontinyu."),
               p("Contoh: Jika data Income berkisar 20,000-80,000, Anda bisa membuat kategori:"),
               tags$ul(
                 tags$li("Rendah: 20,000 - 35,000"),
                 tags$li("Sedang: 35,000 - 55,000"), 
                 tags$li("Tinggi: 55,000 - 80,000")
               ),
-              fluidRow(
-                column(4, numericInput("break1", "Break 1 (Min):", value = 0)),
-                column(4, numericInput("break2", "Break 2:", value = 25)),
-                column(4, numericInput("break3", "Break 3:", value = 50))
+              
+              numericInput("n_custom_breaks", "Jumlah Kategori:", value = 3, min = 2, max = 8),
+              
+              # Dynamic UI untuk breakpoints dan labels
+              div(id = "custom_breaks_container",
+                h6("Masukkan Nilai Batas (Breakpoints):"),
+                uiOutput("custom_breaks_ui")
               ),
-              fluidRow(
-                column(4, numericInput("break4", "Break 4:", value = 75)),
-                column(4, numericInput("break5", "Break 5 (Max):", value = 100)),
-                column(4, numericInput("n_custom_breaks", "Jumlah Breaks:", value = 5, min = 3, max = 10))
+              
+              div(id = "custom_labels_container", 
+                h6("Masukkan Nama Kategori:"),
+                uiOutput("custom_labels_ui")
               ),
-              helpText("Nilai harus urut dari kecil ke besar. Sistem akan membuat kategori berdasarkan rentang yang Anda tentukan.")
+              
+              div(class = "interpretation-box", style = "margin-top: 15px;",
+                h6("Preview Kategorisasi:"),
+                tableOutput("category_preview")
+              ),
+              
+              helpText("Nilai breakpoint harus urut dari kecil ke besar. Nama kategori akan diterapkan pada rentang yang sesuai.")
             ),
             conditionalPanel(
               condition = "input.transform_method == 'quantile'",
@@ -799,6 +808,74 @@ server <- function(input, output, session) {
     transformed_data = NULL
   )
   
+  # Dynamic UI untuk custom breaks
+  output$custom_breaks_ui <- renderUI({
+    n_breaks <- input$n_custom_breaks
+    if(is.null(n_breaks)) n_breaks <- 3
+    
+    # Generate n_breaks + 1 input fields (untuk batas awal dan akhir setiap kategori)
+    break_inputs <- lapply(1:(n_breaks + 1), function(i) {
+      numericInput(paste0("break_", i), 
+                  paste("Breakpoint", i, ":"),
+                  value = (i-1) * 20)
+    })
+    
+    div(
+      fluidRow(
+        lapply(break_inputs, function(x) column(width = ceiling(12/(n_breaks+1)), x))
+      )
+    )
+  })
+  
+  # Dynamic UI untuk custom labels
+  output$custom_labels_ui <- renderUI({
+    n_breaks <- input$n_custom_breaks
+    if(is.null(n_breaks)) n_breaks <- 3
+    
+    # Generate n_breaks input fields untuk nama kategori
+    label_inputs <- lapply(1:n_breaks, function(i) {
+      textInput(paste0("label_", i), 
+               paste("Kategori", i, ":"),
+               value = paste("Kategori", i))
+    })
+    
+    div(
+      fluidRow(
+        lapply(label_inputs, function(x) column(width = ceiling(12/n_breaks), x))
+      )
+    )
+  })
+  
+  # Preview kategorisasi custom
+  output$category_preview <- renderTable({
+    n_breaks <- input$n_custom_breaks
+    if(is.null(n_breaks)) return(NULL)
+    
+    # Ambil nilai breakpoints
+    breaks <- sapply(1:(n_breaks + 1), function(i) {
+      val <- input[[paste0("break_", i)]]
+      if(is.null(val)) return((i-1) * 20)
+      return(val)
+    })
+    
+    # Ambil nama kategori
+    labels <- sapply(1:n_breaks, function(i) {
+      val <- input[[paste0("label_", i)]]
+      if(is.null(val)) return(paste("Kategori", i))
+      return(val)
+    })
+    
+    # Buat preview table
+    preview_data <- data.frame(
+      "No" = 1:n_breaks,
+      "Nama Kategori" = labels,
+      "Rentang Nilai" = paste(breaks[1:n_breaks], "-", breaks[2:(n_breaks+1)]),
+      stringsAsFactors = FALSE
+    )
+    
+    return(preview_data)
+  }, striped = TRUE, hover = TRUE)
+  
   # Update choices when data changes
   observe({
     if (!is.null(values$current_data)) {
@@ -892,15 +969,29 @@ server <- function(input, output, session) {
                                                    include.lowest = TRUE,
                                                    labels = paste0("Q", 1:input$n_quantiles))
     } else if (input$transform_method == "custom") {
-      # Ambil nilai breaks dari input terpisah
-      breaks <- c(input$break1, input$break2, input$break3, input$break4, input$break5)
-      breaks <- breaks[1:input$n_custom_breaks]
+      # Ambil nilai breaks dari input dinamis
+      n_breaks <- input$n_custom_breaks
+      if(is.null(n_breaks)) n_breaks <- 3
+      
+      # Ambil breakpoints
+      breaks <- sapply(1:(n_breaks + 1), function(i) {
+        val <- input[[paste0("break_", i)]]
+        if(is.null(val)) return((i-1) * 20)
+        return(val)
+      })
       breaks <- sort(unique(breaks))
+      
+      # Ambil labels
+      labels <- sapply(1:n_breaks, function(i) {
+        val <- input[[paste0("label_", i)]]
+        if(is.null(val)) return(paste("Kategori", i))
+        return(val)
+      })
       
       data_copy[[paste0(var_name, "_cat")]] <- cut(data_copy[[var_name]], 
                                                    breaks = breaks,
                                                    include.lowest = TRUE,
-                                                   labels = paste0("Cat", 1:(length(breaks)-1)))
+                                                   labels = labels[1:(length(breaks)-1)])
     } else if (input$transform_method == "log") {
       data_copy[[paste0(var_name, "_log")]] <- log(data_copy[[var_name]] + 1)
     } else if (input$transform_method == "sqrt") {
@@ -919,7 +1010,42 @@ server <- function(input, output, session) {
       if (method == "quantile") {
         "Transformasi kuantil membagi data menjadi kategori berdasarkan persentil, berguna untuk membuat kelompok dengan distribusi yang sama."
       } else if (method == "custom") {
-        "Transformasi custom membagi data kontinyu menjadi kategori berdasarkan breakpoint yang Anda tentukan. Setiap kategori mewakili rentang nilai tertentu."
+        n_breaks <- input$n_custom_breaks
+        if(is.null(n_breaks)) n_breaks <- 3
+        
+        # Ambil nama kategori dan breakpoints untuk interpretasi
+        labels <- sapply(1:n_breaks, function(i) {
+          val <- input[[paste0("label_", i)]]
+          if(is.null(val)) return(paste("Kategori", i))
+          return(val)
+        })
+        
+        breaks <- sapply(1:(n_breaks + 1), function(i) {
+          val <- input[[paste0("break_", i)]]
+          if(is.null(val)) return((i-1) * 20)
+          return(val)
+        })
+        
+        interpretasi <- paste0(
+          "🔧 TRANSFORMASI KATEGORISASI CUSTOM:\n\n",
+          "Data kontinyu berhasil diubah menjadi ", n_breaks, " kategori:\n"
+        )
+        
+        for(i in 1:n_breaks) {
+          interpretasi <- paste0(interpretasi, 
+                                "• ", labels[i], ": ", breaks[i], " - ", breaks[i+1], "\n")
+        }
+        
+        interpretasi <- paste0(interpretasi,
+          "\nMANFAAT KATEGORISASI:\n",
+          "• Mempermudah interpretasi data kontinyu\n",
+          "• Memungkinkan analisis berdasarkan kelompok\n",
+          "• Mengatasi outlier ekstrem\n",
+          "• Cocok untuk analisis non-parametrik\n\n",
+          "CATATAN: Pastikan breakpoint sesuai dengan distribusi data dan tujuan analisis Anda."
+        )
+        
+        return(interpretasi)
       } else if (method == "log") {
         "Transformasi logaritma mengurangi skewness pada data dan menstabilkan varians."
       } else if (method == "scale") {
@@ -979,10 +1105,34 @@ server <- function(input, output, session) {
     })
     
     output$descriptive_interpretation <- renderText({
-      paste("Statistik deskriptif menunjukkan ringkasan numerik dari", length(input$desc_variables), 
-            "variabel yang dipilih. Mean dan median memberikan gambaran pusat data, ",
-            "sedangkan standar deviasi menunjukkan variabilitas. Perhatikan perbedaan antara mean dan median ",
-            "yang dapat mengindikasikan skewness dalam distribusi data.")
+      if (!is.null(desc_stats)) {
+        interpretasi <- paste0(
+          "📊 INTERPRETASI STATISTIK DESKRIPTIF:\n\n",
+          "Analisis melibatkan ", length(input$desc_variables), " variabel numerik.\n\n",
+          "UKURAN PEMUSATAN:\n",
+          "• Mean (rata-rata): Nilai rata-rata dari semua observasi\n",
+          "• Median: Nilai tengah setelah data diurutkan (lebih robust terhadap outlier)\n",
+          "• Mode: Nilai yang paling sering muncul\n\n",
+          "UKURAN PENYEBARAN:\n",
+          "• Standard Deviation (SD): Mengukur seberapa jauh data tersebar dari mean\n",
+          "• Variance: Kuadrat dari standard deviation\n",
+          "• Range: Selisih nilai maksimum dan minimum\n\n",
+          "UKURAN BENTUK DISTRIBUSI:\n",
+          "• Skewness: Mengukur kemiringan distribusi\n",
+          "  - Nilai ≈ 0: Distribusi simetris\n",
+          "  - Nilai > 1: Condong ke kanan (right-skewed)\n",
+          "  - Nilai < -1: Condong ke kiri (left-skewed)\n",
+          "• Kurtosis: Mengukur 'ketajaman' puncak distribusi\n",
+          "  - Nilai ≈ 3: Distribusi normal\n",
+          "  - Nilai > 3: Lebih tajam dari normal (leptokurtic)\n",
+          "  - Nilai < 3: Lebih datar dari normal (platykurtic)\n\n",
+          "TIPS INTERPRETASI:\n",
+          "• Bandingkan mean vs median untuk deteksi skewness\n",
+          "• CV (Coefficient of Variation) = SD/Mean * 100% untuk perbandingan variabilitas relatif\n",
+          "• Gunakan plot untuk visualisasi yang lebih baik"
+        )
+        return(interpretasi)
+      }
     })
     
     if (input$include_plots) {
@@ -1298,7 +1448,29 @@ server <- function(input, output, session) {
       })
       
       output$normality_interpretation <- renderText({
-        create_interpretation(norm_test, "normality")
+        basic_interp <- create_interpretation(norm_test, "normality")
+        
+        detailed_interp <- paste0(
+          "🔍 INTERPRETASI UJI NORMALITAS LENGKAP:\n\n",
+          basic_interp, "\n\n",
+          "PENJELASAN STATISTIK:\n",
+          "• Test Statistic: ", round(norm_test$statistic, 4), "\n",
+          "• p-value: ", format(norm_test$p.value, scientific = TRUE), "\n",
+          "• Sampel size: ", length(var_data), "\n\n",
+          "KRITERIA KEPUTUSAN:\n",
+          "• α = 0.05 (tingkat signifikansi)\n",
+          "• Jika p-value > 0.05: Gagal tolak H₀ (data normal)\n",
+          "• Jika p-value ≤ 0.05: Tolak H₀ (data tidak normal)\n\n",
+          "IMPLIKASI UNTUK ANALISIS:\n",
+          if (norm_test$p.value > 0.05) {
+            "✓ Data dapat digunakan untuk uji parametrik (t-test, ANOVA, regresi)\n✓ Asumsi normalitas terpenuhi\n✓ Hasil statistik inferensia akan valid"
+          } else {
+            "⚠ Pertimbangkan transformasi data (log, sqrt, dll)\n⚠ Gunakan uji non-parametrik sebagai alternatif\n⚠ Periksa outlier yang mungkin mempengaruhi distribusi"
+          }, "\n\n",
+          "CATATAN: Untuk sampel besar (n>30), CLT berlaku sehingga normalitas kurang kritis."
+        )
+        
+        return(detailed_interp)
       })
     }
     
@@ -1324,7 +1496,30 @@ server <- function(input, output, session) {
         })
         
         output$homogeneity_interpretation <- renderText({
-          create_interpretation(list(p.value = levene_test$`Pr(>F)`[1]), "homogeneity")
+          basic_interp <- create_interpretation(list(p.value = levene_test$`Pr(>F)`[1]), "homogeneity")
+          
+          detailed_interp <- paste0(
+            "🔍 INTERPRETASI UJI HOMOGENITAS VARIANS:\n\n",
+            basic_interp, "\n\n",
+            "PENJELASAN STATISTIK:\n",
+            "• F-statistic: ", round(levene_test$`F value`[1], 4), "\n",
+            "• df1: ", levene_test$Df[1], ", df2: ", levene_test$Df[2], "\n",
+            "• p-value: ", format(levene_test$`Pr(>F)`[1], scientific = TRUE), "\n",
+            "• Jumlah grup: ", length(unique(test_data$group)), "\n\n",
+            "KRITERIA KEPUTUSAN:\n",
+            "• H₀: σ₁² = σ₂² = ... = σₖ² (varians sama)\n",
+            "• H₁: Minimal ada satu varians berbeda\n",
+            "• α = 0.05 (tingkat signifikansi)\n\n",
+            "IMPLIKASI UNTUK ANALISIS:\n",
+            if (levene_test$`Pr(>F)`[1] > 0.05) {
+              "✓ Dapat menggunakan ANOVA klasik\n✓ Pooled variance t-test valid\n✓ Asumsi homoskedastisitas terpenuhi"
+            } else {
+              "⚠ Gunakan Welch's ANOVA (tidak asumsikan varians sama)\n⚠ Separate variance t-test lebih tepat\n⚠ Pertimbangkan transformasi data\n⚠ Gunakan uji non-parametrik (Kruskal-Wallis)"
+            }, "\n\n",
+            "CATATAN: Levene's test robust terhadap non-normalitas dibanding Bartlett's test."
+          )
+          
+          return(detailed_interp)
         })
       } else {
         output$homogeneity_result <- renderText({
@@ -1409,7 +1604,26 @@ server <- function(input, output, session) {
     
     output$mean_test_interpretation <- renderText({
       if (exists("test_result")) {
-        create_interpretation(test_result, "t_test")
+        basic_interp <- create_interpretation(test_result, "t_test")
+        
+        detailed_interp <- paste0(
+          "📊 INTERPRETASI UJI RATA-RATA LENGKAP:\n\n",
+          basic_interp, "\n\n",
+          "PENJELASAN STATISTIK:\n",
+          "• t-statistic: ", round(test_result$statistic, 4), "\n",
+          "• df: ", round(test_result$parameter, 2), "\n",
+          "• p-value: ", format(test_result$p.value, scientific = TRUE), "\n",
+          "• Confidence Interval: [", paste(round(test_result$conf.int, 4), collapse = ", "), "]\n\n",
+          "EFFECT SIZE: Cohen's d ≈ ", round(abs(test_result$statistic) / sqrt(test_result$parameter + 1), 3), "\n",
+          "KESIMPULAN: ",
+          if (test_result$p.value < 0.05) {
+            "Terdapat perbedaan signifikan secara statistik."
+          } else {
+            "Tidak terdapat perbedaan signifikan secara statistik."
+          }
+        )
+        
+        return(detailed_interp)
       }
     })
     
@@ -1451,7 +1665,38 @@ server <- function(input, output, session) {
       })
       
       output$anova_interpretation <- renderText({
-        create_interpretation(anova_summary[[1]], "anova")
+        basic_interp <- create_interpretation(anova_summary[[1]], "anova")
+        
+        f_stat <- anova_summary[[1]]$`F value`[1]
+        p_val <- anova_summary[[1]]$`Pr(>F)`[1]
+        df1 <- anova_summary[[1]]$Df[1]
+        df2 <- anova_summary[[1]]$Df[2]
+        
+        detailed_interp <- paste0(
+          "📊 INTERPRETASI ANOVA LENGKAP:\n\n",
+          basic_interp, "\n\n",
+          "PENJELASAN STATISTIK:\n",
+          "• F-statistic: ", round(f_stat, 4), "\n",
+          "• df antara grup: ", df1, "\n",
+          "• df dalam grup: ", df2, "\n",
+          "• p-value: ", format(p_val, scientific = TRUE), "\n\n",
+          "HIPOTESIS:\n",
+          "• H₀: μ₁ = μ₂ = ... = μₖ (semua rata-rata grup sama)\n",
+          "• H₁: Minimal ada satu rata-rata grup yang berbeda\n\n",
+          "EFFECT SIZE:\n",
+          "• Eta-squared (η²) ≈ ", round(anova_summary[[1]]$`Sum Sq`[1] / sum(anova_summary[[1]]$`Sum Sq`), 3), "\n",
+          "  - 0.01: Small effect\n",
+          "  - 0.06: Medium effect\n",
+          "  - 0.14: Large effect\n\n",
+          "KESIMPULAN:\n",
+          if (p_val < 0.05) {
+            "Terdapat perbedaan signifikan antar kelompok. Lanjutkan dengan uji post-hoc untuk mengetahui kelompok mana yang berbeda."
+          } else {
+            "Tidak terdapat perbedaan signifikan antar kelompok. Semua kelompok memiliki rata-rata yang sama secara statistik."
+          }
+        )
+        
+        return(detailed_interp)
       })
       
       if (input$post_hoc) {
