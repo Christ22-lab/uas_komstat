@@ -32,13 +32,79 @@ suppressPackageStartupMessages({
   library(cluster)
   library(factoextra)
   library(FactoMineR)
+  library(data.table)
 })
 
 # ==============================================================================
-# FUNGSI AKSES DATA
+# LIBRARY LOADING
 # ==============================================================================
 
-# Fungsi untuk mengunduh data SOVI
+# Suppress startup messages
+suppressPackageStartupMessages({
+  library(shiny)
+  library(shinydashboard)
+  library(shinyWidgets)
+  library(DT)
+  library(plotly)
+  library(ggplot2)
+  library(dplyr)
+  library(readr)
+  library(leaflet)
+  library(corrplot)
+  library(VIM)
+  library(mice)
+  library(psych)
+  library(car)
+  library(nortest)
+  library(lmtest)
+  library(broom)
+  library(knitr)
+  library(kableExtra)
+  library(RColorBrewer)
+  library(viridis)
+  library(htmltools)
+  library(htmlwidgets)
+  library(scales)
+  library(reshape2)
+  library(cluster)
+  library(factoextra)
+  library(FactoMineR)
+  library(data.table)
+})
+
+# ==============================================================================
+# FUNGSI AKSES DATA OPTIMIZED
+# ==============================================================================
+
+# Fungsi untuk mengunduh data SOVI dengan caching
+load_sovi_data_cached <- function() {
+  cache_file <- "cache/sovi_data.rds"
+  
+  # Buat folder cache jika belum ada
+  if (!dir.exists("cache")) {
+    dir.create("cache", showWarnings = FALSE)
+  }
+  
+  # Cek apakah cache ada dan masih fresh (kurang dari 24 jam)
+  if (file.exists(cache_file)) {
+    file_age <- difftime(Sys.time(), file.info(cache_file)$mtime, units = "hours")
+    if (file_age < 24) {
+      return(readRDS(cache_file))
+    }
+  }
+  
+  # Load data dari URL
+  data <- load_sovi_data()
+  
+  # Simpan ke cache jika berhasil
+  if (!is.null(data)) {
+    saveRDS(data, cache_file)
+  }
+  
+  return(data)
+}
+
+# Fungsi untuk mengunduh data SOVI (original)
 load_sovi_data <- function() {
   tryCatch({
     url <- "https://raw.githubusercontent.com/bmlmcmc/naspaclust/main/data/sovi_data.csv"
@@ -53,7 +119,56 @@ load_sovi_data <- function() {
   })
 }
 
-# Fungsi untuk mengunduh data jarak
+# Fungsi untuk mengunduh data jarak dengan lazy loading
+load_distance_data_lazy <- function() {
+  cache_file <- "cache/distance_data.rds"
+  
+  # Buat folder cache jika belum ada
+  if (!dir.exists("cache")) {
+    dir.create("cache", showWarnings = FALSE)
+  }
+  
+  # Cek cache terlebih dahulu
+  if (file.exists(cache_file)) {
+    file_age <- difftime(Sys.time(), file.info(cache_file)$mtime, units = "hours")
+    if (file_age < 24) {
+      return(readRDS(cache_file))
+    }
+  }
+  
+  # Load data dari URL dengan optimasi
+  data <- load_distance_data_optimized()
+  
+  # Simpan ke cache jika berhasil
+  if (!is.null(data)) {
+    saveRDS(data, cache_file)
+  }
+  
+  return(data)
+}
+
+# Fungsi untuk mengunduh data jarak dengan optimasi
+load_distance_data_optimized <- function() {
+  tryCatch({
+    url <- "https://raw.githubusercontent.com/bmlmcmc/naspaclust/main/data/distance.csv"
+    
+    # Download ke file temporary
+    temp_file <- tempfile(fileext = ".csv")
+    download.file(url, temp_file, mode = "wb", quiet = TRUE)
+    
+    # Load dengan fread (lebih cepat dari read_csv)
+    data <- fread(temp_file)
+    
+    # Hapus file temporary
+    unlink(temp_file)
+    
+    return(data)
+  }, error = function(e) {
+    return(NULL)
+  })
+}
+
+# Fungsi untuk mengunduh data jarak (original - fallback)
 load_distance_data <- function() {
   tryCatch({
     url <- "https://raw.githubusercontent.com/bmlmcmc/naspaclust/main/data/distance.csv"
@@ -63,6 +178,25 @@ load_distance_data <- function() {
     return(NULL)
   })
 }
+
+# Fungsi untuk loading data dengan progress indicator
+load_data_with_progress <- function(session = NULL) {
+  if (!is.null(session)) {
+    withProgress(message = 'Loading data...', value = 0, {
+      incProgress(0.5, detail = "Loading SOVI data...")
+      sovi_data <- load_sovi_data_cached()
+      
+      incProgress(1, detail = "Complete!")
+      return(sovi_data)
+    })
+  } else {
+    return(load_sovi_data_cached())
+  }
+}
+
+# ==============================================================================
+# FUNGSI METADATA
+# ==============================================================================
 
 # Fungsi untuk mendapatkan metadata
 get_metadata_info <- function() {
@@ -78,17 +212,60 @@ get_metadata_info <- function() {
       "FHEAD" = "Percentage of female-headed households",
       "FAMILYSIZE" = "Average family size",
       "NOELECTRIC" = "Percentage without electricity access",
-      "LOWEDU" = "Percentage with low education",
-      "GROWTH" = "Population growth rate",
-      "POVERTY" = "Poverty rate",
-      "ILLITERATE" = "Illiteracy rate",
-      "NOTRAINING" = "Percentage without training",
-      "DPRONE" = "Disaster proneness index",
-      "RENTED" = "Percentage of rented housing",
-      "NOSEWER" = "Percentage without sewer access",
-      "TAPWATER" = "Percentage with tap water access",
-      "POPULATION" = "Total population"
+      "NOWATER" = "Percentage without clean water access",
+      "RENT" = "Percentage of rented housing",
+      "POOR" = "Percentage of poor households",
+      "UNEMP" = "Unemployment rate",
+      "DEPEND" = "Dependency ratio",
+      "DISAB" = "Percentage of disabled population",
+      "POVERTY" = "Poverty index",
+      "POPULATION" = "Total population",
+      "AREA" = "Area in square kilometers",
+      "DENSITY" = "Population density"
+    ),
+    last_updated = "2021",
+    total_districts = 511,
+    data_size = list(
+      sovi = "~90 KB",
+      distance = "~4.2 MB"
     )
+  ))
+}
+
+# ==============================================================================
+# FUNGSI CACHE MANAGEMENT
+# ==============================================================================
+
+# Fungsi untuk membersihkan cache
+clear_cache <- function() {
+  if (dir.exists("cache")) {
+    files <- list.files("cache", full.names = TRUE)
+    file.remove(files)
+    return(TRUE)
+  }
+  return(FALSE)
+}
+
+# Fungsi untuk cek status cache
+check_cache_status <- function() {
+  if (!dir.exists("cache")) {
+    return(list(
+      sovi_cached = FALSE,
+      distance_cached = FALSE,
+      cache_size = 0
+    ))
+  }
+  
+  sovi_cache <- file.exists("cache/sovi_data.rds")
+  distance_cache <- file.exists("cache/distance_data.rds")
+  
+  cache_files <- list.files("cache", full.names = TRUE)
+  cache_size <- sum(file.info(cache_files)$size, na.rm = TRUE)
+  
+  return(list(
+    sovi_cached = sovi_cache,
+    distance_cached = distance_cache,
+    cache_size = cache_size
   ))
 }
 

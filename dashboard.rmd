@@ -48,7 +48,12 @@ ui <- dashboardPage(
       # Data Status
       div(class = "sidebar-footer", style = "position: absolute; bottom: 20px; left: 20px; right: 20px;",
           div(id = "data-status", class = "alert alert-info", style = "margin: 0; padding: 10px; font-size: 12px;",
-              "Loading data..."
+              "Loading data...",
+              br(),
+              div(class = "progress progress-xs", style = "margin: 5px 0;",
+                  div(class = "progress-bar progress-bar-striped active", 
+                      style = "width: 100%; animation: progress-bar-stripes 2s linear infinite;")
+              )
           )
       )
     )
@@ -379,7 +384,12 @@ ui <- dashboardPage(
                 br(), br(),
                 downloadButton("export_distance", "Export Distance Matrix", class = "btn-info"),
                 br(), br(),
-                downloadButton("export_analysis", "Export Analysis Results", class = "btn-warning")
+                downloadButton("export_analysis", "Export Analysis Results", class = "btn-warning"),
+                br(), br(),
+                h4("Cache Management:"),
+                actionButton("clear_cache", "Clear Cache", class = "btn btn-warning", 
+                           style = "margin: 5px;"),
+                textOutput("cache_status_text")
             )
           )
         ),
@@ -414,11 +424,13 @@ server <- function(input, output, session) {
     correlation_result = NULL
   )
   
-  # Load data on startup
+  # Load data on startup (optimized)
   observe({
-    # Load SOVI data
-    values$sovi_data <- load_sovi_data()
-    values$distance_data <- load_distance_data()
+    # Load SOVI data dengan caching (lebih cepat)
+    values$sovi_data <- load_data_with_progress(session)
+    
+    # Distance matrix di-load on-demand (tidak saat startup)
+    values$distance_data <- NULL
     
     # Update UI elements
     if (!is.null(values$sovi_data)) {
@@ -430,10 +442,13 @@ server <- function(input, output, session) {
       updateSelectInput(session, "corr_var2", choices = numeric_vars)
       updateSelectInput(session, "ttest_variable", choices = numeric_vars)
       
-      # Update data status
+      # Update data status dengan info cache
+      cache_status <- check_cache_status()
+      cache_info <- if (cache_status$sovi_cached) " (cached)" else ""
+      
       output$data_status <- renderUI({
         div(class = "alert alert-success", style = "margin: 0; padding: 10px; font-size: 12px;",
-            paste("Data loaded:", nrow(values$sovi_data), "districts")
+            paste("Data loaded:", nrow(values$sovi_data), "districts", cache_info)
         )
       })
       
@@ -807,18 +822,68 @@ server <- function(input, output, session) {
   output$export_distance <- downloadHandler(
     filename = function() { paste0("distance_matrix_", Sys.Date(), ".csv") },
     content = function(file) {
+      # Lazy loading distance matrix dengan progress
+      if (is.null(values$distance_data)) {
+        showNotification("Loading distance matrix (4.2 MB)...", 
+                        type = "message", duration = 3)
+        
+        withProgress(message = 'Preparing distance matrix...', value = 0, {
+          incProgress(0.5, detail = "Downloading data...")
+          values$distance_data <- load_distance_data_lazy()
+          incProgress(1, detail = "Complete!")
+        })
+        
+        if (!is.null(values$distance_data)) {
+          showNotification("Distance matrix loaded successfully!", 
+                          type = "message", duration = 2)
+        } else {
+          showNotification("Failed to load distance matrix!", 
+                          type = "error", duration = 5)
+          return()
+        }
+      }
+      
       write.csv(values$distance_data, file, row.names = FALSE)
     }
   )
   
   output$metadata_info <- renderText({
     metadata <- get_metadata_info()
+    cache_status <- check_cache_status()
+    
+    cache_info <- paste(
+      "Cache Status:",
+      paste("- SOVI Data:", ifelse(cache_status$sovi_cached, "Cached ✓", "Not cached")),
+      paste("- Distance Matrix:", ifelse(cache_status$distance_cached, "Cached ✓", "Not cached")),
+      paste("- Cache Size:", round(cache_status$cache_size / 1024 / 1024, 2), "MB"),
+      sep = "\n"
+    )
+    
     paste(
       "Title: ", metadata$title, "\n",
       "Source: ", metadata$source, "\n",
       "Description: ", metadata$description, "\n",
-      "Variables: ", length(metadata$variables)
+      "Variables: ", length(metadata$variables), "\n",
+      "Total Districts: ", metadata$total_districts, "\n",
+      "Data Sizes: SOVI (", metadata$data_size$sovi, "), Distance (", metadata$data_size$distance, ")", "\n\n",
+      cache_info
     )
+  })
+  
+  # Cache management
+  observeEvent(input$clear_cache, {
+    result <- clear_cache()
+    if (result) {
+      values$distance_data <- NULL
+      showNotification("Cache cleared successfully!", type = "message", duration = 3)
+    } else {
+      showNotification("No cache to clear!", type = "warning", duration = 3)
+    }
+  })
+  
+  output$cache_status_text <- renderText({
+    cache_status <- check_cache_status()
+    paste("Cache size:", round(cache_status$cache_size / 1024 / 1024, 2), "MB")
   })
 }
 
