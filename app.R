@@ -3430,7 +3430,8 @@ server <- function(input, output, session) {
           return(detailed_interp)
         })
         
-        if (input$post_hoc) {
+        # Post-hoc test (Tukey HSD) - only run once
+        if (input$post_hoc && p_val < 0.05) {
           tryCatch({
             tukey_result <- TukeyHSD(anova_model)
             
@@ -3446,10 +3447,10 @@ server <- function(input, output, session) {
                 result_text <- paste0(result_text, "PERBANDINGAN YANG SIGNIFIKAN (p < 0.05):\n")
                 for (i in 1:nrow(sig_comparisons)) {
                   comp_name <- rownames(sig_comparisons)[i]
-                  p_val <- sig_comparisons$`p adj`[i]
+                  p_val_tukey <- sig_comparisons$`p adj`[i]
                   diff_val <- sig_comparisons$diff[i]
                   result_text <- paste0(result_text, "• ", comp_name, ": perbedaan = ", 
-                                        round(diff_val, 4), ", p = ", round(p_val, 4), "\n")
+                                        round(diff_val, 4), ", p = ", round(p_val_tukey, 4), "\n")
                 }
                 result_text <- paste0(result_text, "\nKESIMPULAN: Terdapat ", nrow(sig_comparisons), 
                                       " pasangan kelompok yang berbeda secara signifikan.\n\n")
@@ -3459,13 +3460,26 @@ server <- function(input, output, session) {
                 result_text <- paste0(result_text, "post-hoc test tidak menemukan pasangan spesifik yang berbeda signifikan.\n\n")
               }
               
-              result_text <- paste0(result_text, "DETAIL HASIL:\n", capture.output(print(tukey_result)))
+              result_text <- paste0(result_text, "DETAIL HASIL:\n")
+              result_text <- paste0(result_text, capture.output(print(tukey_result)))
               return(result_text)
             })
           }, error = function(e) {
             output$posthoc_result <- renderText({
               paste("Error dalam post-hoc test:", e$message)
             })
+          })
+        } else if (input$post_hoc && p_val >= 0.05) {
+          output$posthoc_result <- renderText({
+            paste("POST-HOC TEST (TUKEY HSD):\n\n",
+                  "CATATAN: Post-hoc test tidak diperlukan karena ANOVA menunjukkan ",
+                  "tidak ada perbedaan signifikan antar kelompok (p ≥ 0.05).\n\n",
+                  "KESIMPULAN: Semua kelompok memiliki rata-rata yang sama secara statistik.")
+          })
+        } else {
+          # Clear post-hoc result if not requested
+          output$posthoc_result <- renderText({
+            ""
           })
         }
         
