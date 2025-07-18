@@ -2061,25 +2061,29 @@ server <- function(input, output, session) {
       tryCatch({
         file_ext <- tools::file_ext(input$file_upload$name)
         if (file_ext %in% c("csv")) {
-          values$current_data <- read.csv(input$file_upload$datapath, stringsAsFactors = FALSE)
+          temp_data <- read.csv(input$file_upload$datapath, stringsAsFactors = FALSE)
         } else if (file_ext %in% c("xlsx", "xls")) {
-          values$current_data <- openxlsx::read.xlsx(input$file_upload$datapath)
+          temp_data <- openxlsx::read.xlsx(input$file_upload$datapath)
         } else if (file_ext %in% c("sav")) {
-          values$current_data <- haven::read_sav(input$file_upload$datapath)
-          # Convert to data.frame and handle labels
-          values$current_data <- as.data.frame(values$current_data)
+          temp_data <- haven::read_sav(input$file_upload$datapath)
+          temp_data <- as.data.frame(temp_data)
         } else {
           showNotification("Format file tidak didukung!", type = "error")
           return()
         }
-        
-        # Tambahkan koordinat Indonesia jika belum ada
-        if (!"Latitude" %in% names(values$current_data) || !"Longitude" %in% names(values$current_data)) {
-          n_points <- nrow(values$current_data)
-          values$current_data$Latitude <- runif(n_points, -11, 6)   # Indonesia latitude range: 6°N to 11°S
-          values$current_data$Longitude <- runif(n_points, 95, 141) # Indonesia longitude range: 95°E to 141°E
+        # Validasi: minimal 2 kolom dan 5 baris
+        if (ncol(temp_data) < 2 || nrow(temp_data) < 5) {
+          showNotification("File harus memiliki minimal 2 kolom dan 5 baris!", type = "error")
+          return()
         }
-        
+        # Validasi kolom wajib (jika ingin peta: State, Latitude, Longitude)
+        # Jika tidak ada, tambahkan random koordinat
+        if (!"Latitude" %in% names(temp_data) || !"Longitude" %in% names(temp_data)) {
+          n_points <- nrow(temp_data)
+          temp_data$Latitude <- runif(n_points, -11, 6)
+          temp_data$Longitude <- runif(n_points, 95, 141)
+        }
+        values$current_data <- temp_data
         showNotification("File berhasil diupload!", type = "message")
       }, error = function(e) {
         showNotification(paste("Error loading file:", e$message), type = "error")
@@ -2447,35 +2451,32 @@ server <- function(input, output, session) {
     if (input$map_variable != "" && !is.null(input$map_variable)) {
       n_points <- min(nrow(values$current_data), 200)  # Reduced for performance
       indices <- sample(nrow(values$current_data), n_points)
-      
+      sample_data <- values$current_data[indices, ]
       # Generate realistic Indonesian coordinates based on province data if available
-      if ("State" %in% names(values$current_data)) {
-        # Use province-based coordinates for Indonesia (major provinces)
+      if ("State" %in% names(sample_data)) {
         province_coords <- data.frame(
           State = c("DKI Jakarta", "Jawa Barat", "Jawa Tengah", "Jawa Timur", "Sumatera Utara", 
                    "Sumatera Barat", "Sumatera Selatan", "Kalimantan Timur", "Sulawesi Selatan", "Bali"),
           lat = c(-6.2088, -6.9175, -7.2575, -7.5360, 3.5952, -0.7893, -3.3194, -0.5022, -5.1477, -8.4095),
           lng = c(106.8456, 107.6191, 110.1775, 112.2384, 98.6722, 100.6500, 103.9140, 117.1537, 119.4327, 115.1889)
         )
-        
-        sample_data <- values$current_data[indices, ]
+        # Pastikan State pada sample_data cocok dengan province_coords
+        sample_data$State <- as.character(sample_data$State)
+        province_coords$State <- as.character(province_coords$State)
         map_coords <- merge(sample_data, province_coords, by = "State", all.x = TRUE)
-        
         # Add random variation to coordinates within Indonesia
-        map_coords$lat <- map_coords$lat + runif(nrow(map_coords), -1, 1)
-        map_coords$lng <- map_coords$lng + runif(nrow(map_coords), -1, 1)
-        
+        map_coords$lat <- ifelse(!is.na(map_coords$lat), map_coords$lat + runif(nrow(map_coords), -1, 1), NA)
+        map_coords$lng <- ifelse(!is.na(map_coords$lng), map_coords$lng + runif(nrow(map_coords), -1, 1), NA)
         # Fill missing coordinates with random Indonesian coordinates
-        missing_coords <- is.na(map_coords$lat)
-        map_coords$lat[missing_coords] <- runif(sum(missing_coords), -11, 6)  # Indonesia latitude range
-        map_coords$lng[missing_coords] <- runif(sum(missing_coords), 95, 141) # Indonesia longitude range
+        missing_coords <- is.na(map_coords$lat) | is.na(map_coords$lng)
+        map_coords$lat[missing_coords] <- runif(sum(missing_coords), -11, 6)
+        map_coords$lng[missing_coords] <- runif(sum(missing_coords), 95, 141)
       } else {
         # Generate random Indonesian coordinates
-        map_coords <- values$current_data[indices, ]
+        map_coords <- sample_data
         map_coords$lat <- runif(n_points, -11, 6)   # Indonesia latitude range: 6°N to 11°S
         map_coords$lng <- runif(n_points, 95, 141)  # Indonesia longitude range: 95°E to 141°E
       }
-      
       map_coords$value <- map_coords[[input$map_variable]]
       return(map_coords)
     }
@@ -2841,32 +2842,32 @@ server <- function(input, output, session) {
       }
     }
     
+    # Tambahkan interpretasi hasil paired t-test
     output$mean_test_interpretation <- renderText({
-      if (exists("test_result")) {
-        basic_interp <- create_interpretation(test_result, "t_test")
-        
-        detailed_interp <- paste0(
-          "**INTERPRETASI UJI RATA-RATA LENGKAP:**\n\n",
-          basic_interp, "\n\n",
-          "**PENJELASAN STATISTIK:**\n",
-          "• t-statistic: ", round(test_result$statistic, 4), "\n",
-          "• df: ", round(test_result$parameter, 2), "\n",
-          "• p-value: ", format(test_result$p.value, scientific = TRUE), "\n",
-          "• Confidence Interval: [", paste(round(test_result$conf.int, 4), collapse = ", "), "]\n\n",
-          "**EFFECT SIZE:** Cohen's d ≈ ", round(abs(test_result$statistic) / sqrt(test_result$parameter + 1), 3), "\n\n",
-          "**KRITERIA KEPUTUSAN:**\n",
-          "• α = 0.05 (tingkat signifikansi)\n",
-          "• Jika p-value < 0.05: Tolak H₀\n",
-          "• Jika p-value ≥ 0.05: Gagal tolak H₀\n\n",
-          "**KESIMPULAN:**\n",
-          if (test_result$p.value < 0.05) {
-            "Terdapat perbedaan signifikan secara statistik.\n• Hasil mendukung H₁\n• Perbedaan tidak disebabkan oleh kebetulan"
+      if (input$mean_test_type == "paired") {
+        # Asumsikan hasil t-test disimpan di values$mean_test_result
+        test_result <- values$mean_test_result
+        if (!is.null(test_result)) {
+          p_value <- test_result$p.value
+          alpha <- 0.05
+          if (p_value > alpha) {
+            return(paste0(
+              "**KESIMPULAN:** p-value (", format(p_value, scientific = TRUE), ") > α (", alpha, "), maka GAGAL TOLAK H₀.\n",
+              "**INTERPRETASI:** Tidak ada perbedaan signifikan antara dua kelompok berpasangan pada tingkat signifikansi 5%.\n",
+              "**REKOMENDASI:** Terima hipotesis nol."
+            ))
           } else {
-            "Tidak terdapat perbedaan signifikan secara statistik.\n• Hasil mendukung H₀\n• Perbedaan bisa disebabkan oleh kebetulan"
+            return(paste0(
+              "**KESIMPULAN:** p-value (", format(p_value, scientific = TRUE), ") ≤ α (", alpha, "), maka TOLAK H₀.\n",
+              "**INTERPRETASI:** Terdapat perbedaan signifikan antara dua kelompok berpasangan pada tingkat signifikansi 5%.\n",
+              "**REKOMENDASI:** Tolak hipotesis nol."
+            ))
           }
-        )
-        
-        return(detailed_interp)
+        } else {
+          return("Hasil uji paired t-test belum tersedia.")
+        }
+      } else {
+        return("")
       }
     })
     
