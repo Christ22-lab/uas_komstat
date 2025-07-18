@@ -33,6 +33,9 @@ library(moments)
 library(officer)
 library(haven)  # For reading SPSS files
 library(cluster)  # For silhouette analysis
+library(dbscan)   # For DBSCAN clustering
+library(factoextra) # For clustering visualization
+library(fpc)      # For clustering validation
 
 # Global variables
 sovi_url <- "https://raw.githubusercontent.com/bmlmcmc/naspaclust/main/data/sovi_data.csv"
@@ -72,7 +75,7 @@ distance_matrix <- data_list$distance
 
 # =================== CLUSTERING ANALYSIS (DISTANCE) ===================
 # Tambahkan di bawah load_data dan sebelum UI
-do_clustering <- function(distance_matrix, k = 3, method = "ward.D2") {
+do_clustering <- function(distance_matrix, k = 3, method = "ward.D2", cluster_method = "hierarchical", eps = 0.5, minPts = 5) {
   # Jika distance_matrix adalah data.frame, konversi ke matrix dan buang kolom ID jika ada
   if (is.data.frame(distance_matrix)) {
     mat <- as.matrix(distance_matrix)
@@ -84,9 +87,41 @@ do_clustering <- function(distance_matrix, k = 3, method = "ward.D2") {
   # Pastikan matrix benar-benar square
   n <- nrow(mat)
   if (ncol(mat) != n) stop("Distance matrix is not square after removing ID column!")
-  hc <- hclust(as.dist(mat), method = method)
-  cluster <- cutree(hc, k = k)
-  list(hc = hc, cluster = cluster, silhouette = cluster::silhouette(cluster, as.dist(mat)))
+  
+  dist_obj <- as.dist(mat)
+  
+  if (cluster_method == "hierarchical") {
+    hc <- hclust(dist_obj, method = method)
+    cluster <- cutree(hc, k = k)
+    silhouette_result <- cluster::silhouette(cluster, dist_obj)
+    return(list(hc = hc, cluster = cluster, silhouette = silhouette_result, method = cluster_method))
+    
+  } else if (cluster_method == "kmeans") {
+    # Untuk k-means, kita perlu koordinat, bukan distance matrix
+    # Gunakan MDS untuk mendapatkan koordinat dari distance matrix
+    mds_result <- cmdscale(dist_obj, k = 2)
+    km <- kmeans(mds_result, centers = k, nstart = 25)
+    cluster <- km$cluster
+    silhouette_result <- cluster::silhouette(cluster, dist_obj)
+    return(list(kmeans = km, cluster = cluster, silhouette = silhouette_result, mds = mds_result, method = cluster_method))
+    
+  } else if (cluster_method == "pam") {
+    # K-medoids (PAM) - cocok untuk distance matrix
+    pam_result <- cluster::pam(dist_obj, k = k)
+    cluster <- pam_result$clustering
+    silhouette_result <- pam_result$silinfo$widths
+    return(list(pam = pam_result, cluster = cluster, silhouette = silhouette_result, method = cluster_method))
+    
+  } else if (cluster_method == "dbscan") {
+    # DBSCAN - perlu koordinat dari MDS
+    mds_result <- cmdscale(dist_obj, k = 2)
+    db_result <- dbscan::dbscan(mds_result, eps = eps, minPts = minPts)
+    cluster <- db_result$cluster
+    # Untuk DBSCAN, noise points memiliki cluster = 0, ubah ke cluster terpisah
+    cluster[cluster == 0] <- max(cluster) + 1
+    silhouette_result <- cluster::silhouette(cluster, dist_obj)
+    return(list(dbscan = db_result, cluster = cluster, silhouette = silhouette_result, mds = mds_result, method = cluster_method))
+  }
 }
 
 # Lakukan clustering pada distance_matrix
@@ -1636,34 +1671,86 @@ ui <- dashboardPage(
         
         fluidRow(
           box(width = 4, title = "Pengaturan Clustering", status = "primary", solidHeader = TRUE,
-            selectInput("n_cluster", "Jumlah Cluster:", choices = 2:8, selected = 3),
-            selectInput("clustering_method", "Metode Clustering:",
+            selectInput("cluster_algorithm", "Algoritma Clustering:",
               choices = list(
-                "Ward D2" = "ward.D2",
-                "Ward D" = "ward.D",
-                "Complete Linkage" = "complete",
-                "Single Linkage" = "single",
-                "Average Linkage" = "average",
-                "Centroid" = "centroid"
-              ), selected = "ward.D2"),
+                "Hierarchical Clustering" = "hierarchical",
+                "K-Means" = "kmeans",
+                "K-Medoids (PAM)" = "pam",
+                "DBSCAN" = "dbscan"
+              ), selected = "hierarchical"),
+            
+            conditionalPanel(
+              condition = "input.cluster_algorithm != 'dbscan'",
+              selectInput("n_cluster", "Jumlah Cluster:", choices = 2:8, selected = 3)
+            ),
+            
+            conditionalPanel(
+              condition = "input.cluster_algorithm == 'hierarchical'",
+              selectInput("clustering_method", "Metode Linkage:",
+                choices = list(
+                  "Ward D2 (Rekomendasi)" = "ward.D2",
+                  "Ward D" = "ward.D",
+                  "Complete Linkage" = "complete",
+                  "Single Linkage" = "single",
+                  "Average Linkage" = "average",
+                  "Centroid" = "centroid"
+                ), selected = "ward.D2")
+            ),
+            
+            conditionalPanel(
+              condition = "input.cluster_algorithm == 'dbscan'",
+              numericInput("eps", "Epsilon (radius):", value = 50, min = 1, max = 200, step = 5),
+              numericInput("minPts", "Min Points:", value = 5, min = 2, max = 20, step = 1)
+            ),
+            
             actionButton("run_clustering", "Jalankan Clustering", class = "btn-primary"),
             br(), br(),
+            
+            div(class = "info-box",
+              h5("Rekomendasi Metode untuk Data Distance Matrix:"),
+              p(strong("🏆 Hierarchical (Ward D2):"), "TERBAIK untuk data ini. Cocok untuk distance matrix, menghasilkan cluster yang kompak dan seimbang."),
+              p(strong("⭐ K-Medoids (PAM):"), "Sangat baik untuk data dengan outliers. Menggunakan medoids (titik tengah) yang lebih robust."),
+              p(strong("🔍 DBSCAN:"), "Baik untuk mendeteksi cluster dengan bentuk tidak beraturan dan mengidentifikasi noise/outliers."),
+              p(strong("⚡ K-Means:"), "Cepat tapi kurang optimal untuk distance matrix. Memerlukan transformasi MDS terlebih dahulu."),
+              br(),
+              p(strong("💡 Tip:"), "Untuk data distance matrix seperti ini, mulai dengan Hierarchical (Ward D2) atau K-Medoids (PAM).")
+            ),
+            
             div(class = "interpretation-box",
               h5("Interpretasi Cluster:"),
               textOutput("cluster_interpretation")
             )
           ),
           
-          box(width = 8, title = "Dendrogram", status = "info", solidHeader = TRUE,
-            plotOutput("dendrogram_plot", height = "400px"),
+          box(width = 8, title = "Visualisasi Clustering", status = "info", solidHeader = TRUE,
+            conditionalPanel(
+              condition = "input.cluster_algorithm == 'hierarchical'",
+              h5("Dendrogram"),
+              p("Dendrogram menunjukkan hierarki penggabungan cluster. Semakin tinggi garis horizontal, semakin besar jarak antar cluster yang digabungkan. Kotak berwarna menunjukkan cluster yang terbentuk pada jumlah cluster yang dipilih."),
+              plotOutput("dendrogram_plot", height = "350px")
+            ),
+            conditionalPanel(
+              condition = "input.cluster_algorithm != 'hierarchical'",
+              h5("Scatter Plot Clustering"),
+              p("Visualisasi hasil clustering dalam ruang 2D menggunakan MDS (Multidimensional Scaling). Setiap warna menunjukkan cluster yang berbeda."),
+              plotOutput("cluster_scatter_plot", height = "350px")
+            ),
             br(),
-            downloadButton("download_dendrogram", "Download Dendrogram (JPG)", class = "btn-success")
+            downloadButton("download_clustering_plot", "Download Plot (JPG)", class = "btn-success")
           )
         ),
         
         fluidRow(
           box(width = 6, title = "Silhouette Analysis", status = "warning", solidHeader = TRUE,
-            plotOutput("silhouette_plot", height = "350px"),
+            h5("Analisis Silhouette"),
+            p("Silhouette analysis mengukur seberapa baik setiap observasi cocok dengan cluster-nya dibandingkan dengan cluster lain. Nilai silhouette berkisar dari -1 hingga 1:"),
+            tags$ul(
+              tags$li(strong("Nilai > 0.7:"), "Struktur cluster sangat kuat"),
+              tags$li(strong("Nilai 0.5-0.7:"), "Struktur cluster cukup baik"),
+              tags$li(strong("Nilai 0.25-0.5:"), "Struktur cluster lemah"),
+              tags$li(strong("Nilai < 0.25:"), "Tidak ada struktur cluster yang jelas")
+            ),
+            plotOutput("silhouette_plot", height = "250px"),
             br(),
             div(class = "interpretation-box",
               h5("Kualitas Clustering:"),
@@ -1672,9 +1759,11 @@ ui <- dashboardPage(
           ),
           
           box(width = 6, title = "Peta Cluster", status = "success", solidHeader = TRUE,
-            leafletOutput("cluster_map", height = "350px"),
+            h5("Peta Interaktif Hasil Clustering"),
+            p("Peta menunjukkan distribusi spasial dari cluster yang terbentuk. Setiap warna menunjukkan cluster yang berbeda. Klik pada marker untuk melihat detail informasi."),
+            leafletOutput("cluster_map", height = "250px"),
             br(),
-            downloadButton("download_cluster_map", "Download Peta Cluster (JPG)", class = "btn-success")
+            downloadButton("download_cluster_map", "Download Peta Cluster (PNG)", class = "btn-success")
           )
         ),
         
@@ -1683,6 +1772,16 @@ ui <- dashboardPage(
             DT::dataTableOutput("cluster_table"),
             br(),
             downloadButton("download_cluster_data", "Download Data Cluster (Excel)", class = "btn-info")
+          )
+        ),
+        
+        fluidRow(
+          box(width = 12, title = "Analisis Komprehensif Hasil Clustering", status = "success", solidHeader = TRUE,
+            h5("Penjelasan Hasil Clustering"),
+            verbatimTextOutput("comprehensive_analysis"),
+            br(),
+            h5("Rekomendasi Berdasarkan Hasil"),
+            textOutput("clustering_recommendations")
           )
         )
       ),
@@ -3973,23 +4072,75 @@ Pastikan variabel yang dipilih adalah numerik.")
   # =================== SERVER LOGIC UNTUK CLUSTERING ===================
   # Tambahkan di server function, sebelum mapping
   observeEvent(input$run_clustering, {
-    k <- as.numeric(input$n_cluster)
-    method <- input$clustering_method
-    clustering <- do_clustering(distance_matrix, k = k, method = method)
+    cluster_method <- input$cluster_algorithm
+    
+    if (cluster_method == "dbscan") {
+      eps <- input$eps
+      minPts <- input$minPts
+      clustering <- do_clustering(distance_matrix, cluster_method = cluster_method, eps = eps, minPts = minPts)
+    } else {
+      k <- as.numeric(input$n_cluster)
+      if (cluster_method == "hierarchical") {
+        method <- input$clustering_method
+        clustering <- do_clustering(distance_matrix, k = k, method = method, cluster_method = cluster_method)
+      } else {
+        clustering <- do_clustering(distance_matrix, k = k, cluster_method = cluster_method)
+      }
+    }
+    
     values$cluster_assignment <- as.factor(clustering$cluster)
-    values$hc <- clustering$hc
+    values$clustering_result <- clustering
     values$silhouette <- clustering$silhouette
+    
     # Update data SOVI dengan cluster baru
     values$current_data$Cluster <- values$cluster_assignment
   })
   
   output$dendrogram_plot <- renderPlot({
-    hc <- if (!is.null(values$hc)) values$hc else clustering_result$hc
-    k <- as.numeric(if (!is.null(input$n_cluster)) input$n_cluster else 3)
-    clus <- cutree(hc, k = k)
-    plot(hc, main = paste("Dendrogram -", k, "Cluster"), 
-         xlab = "Observasi", ylab = "Jarak", sub = "", cex = 0.7)
-    rect.hclust(hc, k = k, border = rainbow(k))
+    if (!is.null(values$clustering_result) && values$clustering_result$method == "hierarchical") {
+      hc <- values$clustering_result$hc
+      k <- as.numeric(input$n_cluster)
+      plot(hc, main = paste("Dendrogram -", k, "Cluster"), 
+           xlab = "Observasi", ylab = "Jarak", sub = "", cex = 0.7)
+      rect.hclust(hc, k = k, border = rainbow(k))
+    } else if (!is.null(clustering_result$hc)) {
+      hc <- clustering_result$hc
+      k <- 3
+      plot(hc, main = paste("Dendrogram -", k, "Cluster (Default)"), 
+           xlab = "Observasi", ylab = "Jarak", sub = "", cex = 0.7)
+      rect.hclust(hc, k = k, border = rainbow(k))
+    }
+  })
+  
+  output$cluster_scatter_plot <- renderPlot({
+    if (!is.null(values$clustering_result) && values$clustering_result$method != "hierarchical") {
+      clustering <- values$clustering_result
+      
+      if (clustering$method == "pam") {
+        # Untuk PAM, gunakan MDS untuk visualisasi
+        dist_mat <- as.matrix(distance_matrix)
+        if (ncol(dist_mat) > nrow(dist_mat)) {
+          dist_mat <- dist_mat[, -1]
+        }
+        mds_result <- cmdscale(as.dist(dist_mat), k = 2)
+        
+        plot(mds_result, col = rainbow(max(clustering$cluster))[clustering$cluster], 
+             pch = 16, cex = 1.2,
+             main = paste("K-Medoids (PAM) -", length(unique(clustering$cluster)), "Cluster"),
+             xlab = "MDS Dimension 1", ylab = "MDS Dimension 2")
+        legend("topright", legend = paste("Cluster", 1:max(clustering$cluster)), 
+               col = rainbow(max(clustering$cluster)), pch = 16)
+        
+      } else if (clustering$method %in% c("kmeans", "dbscan")) {
+        mds_result <- clustering$mds
+        plot(mds_result, col = rainbow(max(clustering$cluster))[clustering$cluster], 
+             pch = 16, cex = 1.2,
+             main = paste(toupper(clustering$method), "-", length(unique(clustering$cluster)), "Cluster"),
+             xlab = "MDS Dimension 1", ylab = "MDS Dimension 2")
+        legend("topright", legend = paste("Cluster", 1:max(clustering$cluster)), 
+               col = rainbow(max(clustering$cluster)), pch = 16)
+      }
+    }
   })
   
   output$silhouette_plot <- renderPlot({
@@ -4032,12 +4183,30 @@ Pastikan variabel yang dipilih adalah numerik.")
   })
   
   output$cluster_interpretation <- renderText({
-    if (!is.null(values$silhouette)) {
-      avg_sil <- mean(values$silhouette[,3])
+    if (!is.null(values$clustering_result)) {
+      clustering <- values$clustering_result
+      method_name <- switch(clustering$method,
+                           "hierarchical" = "Hierarchical Clustering",
+                           "kmeans" = "K-Means",
+                           "pam" = "K-Medoids (PAM)",
+                           "dbscan" = "DBSCAN")
+      
       n_clusters <- length(unique(values$cluster_assignment))
-      paste("Rata-rata silhouette width:", round(avg_sil, 3), 
-            "dengan", n_clusters, "cluster.",
-            if(avg_sil > 0.5) "Kualitas clustering baik." else "Kualitas clustering perlu diperbaiki.")
+      
+      if (!is.null(values$silhouette)) {
+        if (clustering$method == "pam") {
+          avg_sil <- mean(values$silhouette[,3])
+        } else {
+          avg_sil <- mean(values$silhouette[,3])
+        }
+        
+        quality <- if(avg_sil > 0.7) "sangat baik" else if(avg_sil > 0.5) "baik" else if(avg_sil > 0.25) "cukup" else "kurang"
+        
+        paste("Metode:", method_name, "menghasilkan", n_clusters, "cluster dengan rata-rata silhouette width:", 
+              round(avg_sil, 3), ". Kualitas clustering:", quality, ".")
+      } else {
+        paste("Metode:", method_name, "menghasilkan", n_clusters, "cluster.")
+      }
     } else {
       "Jalankan clustering untuk melihat interpretasi."
     }
@@ -4047,30 +4216,217 @@ Pastikan variabel yang dipilih adalah numerik.")
     if (!is.null(values$silhouette)) {
       avg_sil <- mean(values$silhouette[,3])
       if (avg_sil > 0.7) {
-        "Struktur cluster sangat kuat."
+        "Struktur cluster sangat kuat. Setiap observasi sangat cocok dengan cluster-nya dan jelas terpisah dari cluster lain."
       } else if (avg_sil > 0.5) {
-        "Struktur cluster cukup baik."
+        "Struktur cluster cukup baik. Sebagian besar observasi cocok dengan cluster-nya, meskipun ada beberapa yang mungkin berada di perbatasan."
       } else if (avg_sil > 0.25) {
-        "Struktur cluster lemah, mungkin artifisial."
+        "Struktur cluster lemah. Banyak observasi yang tidak jelas masuk ke cluster mana, mungkin perlu mempertimbangkan jumlah cluster yang berbeda."
       } else {
-        "Tidak ada struktur cluster yang jelas."
+        "Tidak ada struktur cluster yang jelas. Data mungkin tidak memiliki pola clustering yang natural, atau metode clustering tidak sesuai."
       }
     } else {
       "Jalankan clustering untuk melihat analisis silhouette."
     }
   })
   
+  output$comprehensive_analysis <- renderText({
+    if (!is.null(values$clustering_result)) {
+      clustering <- values$clustering_result
+      method_name <- switch(clustering$method,
+                           "hierarchical" = "Hierarchical Clustering",
+                           "kmeans" = "K-Means",
+                           "pam" = "K-Medoids (PAM)",
+                           "dbscan" = "DBSCAN")
+      
+      n_clusters <- length(unique(values$cluster_assignment))
+      cluster_sizes <- table(values$cluster_assignment)
+      
+      analysis <- paste(
+        "=== ANALISIS CLUSTERING ===\n",
+        "Metode yang digunakan:", method_name, "\n",
+        "Jumlah cluster yang terbentuk:", n_clusters, "\n",
+        "Ukuran cluster:", paste(names(cluster_sizes), "=", cluster_sizes, collapse = ", "), "\n\n"
+      )
+      
+      if (!is.null(values$silhouette)) {
+        avg_sil <- mean(values$silhouette[,3])
+        analysis <- paste(analysis,
+          "=== KUALITAS CLUSTERING ===\n",
+          "Rata-rata Silhouette Width:", round(avg_sil, 4), "\n",
+          "Interpretasi Silhouette:\n"
+        )
+        
+        if (avg_sil > 0.7) {
+          analysis <- paste(analysis, "- Struktur cluster SANGAT KUAT\n- Pemisahan antar cluster sangat jelas\n- Hasil clustering sangat dapat diandalkan\n")
+        } else if (avg_sil > 0.5) {
+          analysis <- paste(analysis, "- Struktur cluster CUKUP BAIK\n- Pemisahan antar cluster cukup jelas\n- Hasil clustering dapat diandalkan\n")
+        } else if (avg_sil > 0.25) {
+          analysis <- paste(analysis, "- Struktur cluster LEMAH\n- Pemisahan antar cluster tidak jelas\n- Pertimbangkan metode atau jumlah cluster lain\n")
+        } else {
+          analysis <- paste(analysis, "- TIDAK ADA struktur cluster yang jelas\n- Data mungkin tidak memiliki pola clustering natural\n- Pertimbangkan metode clustering lain\n")
+        }
+        
+        analysis <- paste(analysis, "\n")
+      }
+      
+      if (clustering$method == "hierarchical") {
+        analysis <- paste(analysis,
+          "=== KARAKTERISTIK HIERARCHICAL CLUSTERING ===\n",
+          "- Menggunakan distance matrix secara langsung\n",
+          "- Membangun hierarki cluster dari bawah ke atas\n",
+          "- Dendrogram menunjukkan proses penggabungan cluster\n",
+          "- Semakin tinggi garis horizontal, semakin besar jarak antar cluster\n"
+        )
+      } else if (clustering$method == "pam") {
+        analysis <- paste(analysis,
+          "=== KARAKTERISTIK K-MEDOIDS (PAM) ===\n",
+          "- Menggunakan medoids (titik representatif) sebagai pusat cluster\n",
+          "- Lebih robust terhadap outliers dibanding K-Means\n",
+          "- Cocok untuk data dengan distance matrix\n",
+          "- Medoids adalah observasi asli dari dataset\n"
+        )
+      } else if (clustering$method == "dbscan") {
+        analysis <- paste(analysis,
+          "=== KARAKTERISTIK DBSCAN ===\n",
+          "- Dapat mendeteksi cluster dengan bentuk tidak beraturan\n",
+          "- Mengidentifikasi noise/outliers secara otomatis\n",
+          "- Tidak memerlukan spesifikasi jumlah cluster di awal\n",
+          "- Parameter eps dan minPts menentukan kepadatan cluster\n"
+        )
+      } else if (clustering$method == "kmeans") {
+        analysis <- paste(analysis,
+          "=== KARAKTERISTIK K-MEANS ===\n",
+          "- Menggunakan transformasi MDS dari distance matrix\n",
+          "- Membagi data menjadi k cluster dengan centroid\n",
+          "- Mengasumsikan cluster berbentuk spherical\n",
+          "- Sensitif terhadap outliers\n"
+        )
+      }
+      
+      return(analysis)
+    } else {
+      "Jalankan clustering untuk melihat analisis komprehensif."
+    }
+  })
+  
+  output$clustering_recommendations <- renderText({
+    if (!is.null(values$clustering_result) && !is.null(values$silhouette)) {
+      clustering <- values$clustering_result
+      avg_sil <- mean(values$silhouette[,3])
+      n_clusters <- length(unique(values$cluster_assignment))
+      
+      recommendations <- ""
+      
+      if (avg_sil > 0.7) {
+        recommendations <- paste("✅ Hasil clustering sangat baik! Anda dapat menggunakan hasil ini untuk analisis lebih lanjut.")
+      } else if (avg_sil > 0.5) {
+        recommendations <- paste("✅ Hasil clustering cukup baik. Anda dapat menggunakan hasil ini, namun pertimbangkan untuk mencoba jumlah cluster yang berbeda.")
+      } else if (avg_sil > 0.25) {
+        recommendations <- paste("⚠️ Hasil clustering kurang optimal. Rekomendasi:")
+        if (clustering$method == "hierarchical") {
+          recommendations <- paste(recommendations, "Coba metode linkage lain (Complete, Average) atau ubah jumlah cluster.")
+        } else if (clustering$method == "kmeans") {
+          recommendations <- paste(recommendations, "Coba K-Medoids (PAM) yang lebih cocok untuk distance matrix.")
+        } else if (clustering$method == "dbscan") {
+          recommendations <- paste(recommendations, "Sesuaikan parameter eps dan minPts, atau coba metode lain.")
+        }
+      } else {
+        recommendations <- paste("❌ Hasil clustering tidak memuaskan. Rekomendasi:")
+        if (clustering$method != "pam") {
+          recommendations <- paste(recommendations, "Coba K-Medoids (PAM) yang lebih robust untuk distance matrix.")
+        }
+        recommendations <- paste(recommendations, "Atau eksplorasi data lebih lanjut untuk memahami struktur yang sebenarnya.")
+      }
+      
+      # Tambahan rekomendasi berdasarkan ukuran cluster
+      cluster_sizes <- table(values$cluster_assignment)
+      if (max(cluster_sizes) > 0.8 * sum(cluster_sizes)) {
+        recommendations <- paste(recommendations, "⚠️ Satu cluster mendominasi (>80% data). Pertimbangkan mengurangi jumlah cluster atau menggunakan metode lain.")
+      }
+      
+      return(recommendations)
+    } else {
+      "Jalankan clustering untuk melihat rekomendasi."
+    }
+  })
+  
   # Download handlers untuk clustering
-  output$download_dendrogram <- downloadHandler(
-    filename = function() { paste0("dendrogram_", Sys.Date(), ".jpg") },
+  output$download_clustering_plot <- downloadHandler(
+    filename = function() { paste0("clustering_plot_", Sys.Date(), ".jpg") },
     content = function(file) {
       jpeg(file, width = 800, height = 600, quality = 95)
-      hc <- if (!is.null(values$hc)) values$hc else clustering_result$hc
-      k <- as.numeric(if (!is.null(input$n_cluster)) input$n_cluster else 3)
-      plot(hc, main = paste("Dendrogram -", k, "Cluster"), 
-           xlab = "Observasi", ylab = "Jarak", sub = "", cex = 0.7)
-      rect.hclust(hc, k = k, border = rainbow(k))
+      
+      if (!is.null(values$clustering_result)) {
+        clustering <- values$clustering_result
+        
+        if (clustering$method == "hierarchical") {
+          hc <- clustering$hc
+          k <- as.numeric(input$n_cluster)
+          plot(hc, main = paste("Dendrogram -", k, "Cluster"), 
+               xlab = "Observasi", ylab = "Jarak", sub = "", cex = 0.7)
+          rect.hclust(hc, k = k, border = rainbow(k))
+        } else {
+          # Untuk metode non-hierarchical, buat scatter plot
+          if (clustering$method == "pam") {
+            dist_mat <- as.matrix(distance_matrix)
+            if (ncol(dist_mat) > nrow(dist_mat)) {
+              dist_mat <- dist_mat[, -1]
+            }
+            mds_result <- cmdscale(as.dist(dist_mat), k = 2)
+            
+            plot(mds_result, col = rainbow(max(clustering$cluster))[clustering$cluster], 
+                 pch = 16, cex = 1.2,
+                 main = paste("K-Medoids (PAM) -", length(unique(clustering$cluster)), "Cluster"),
+                 xlab = "MDS Dimension 1", ylab = "MDS Dimension 2")
+            legend("topright", legend = paste("Cluster", 1:max(clustering$cluster)), 
+                   col = rainbow(max(clustering$cluster)), pch = 16)
+          } else if (clustering$method %in% c("kmeans", "dbscan")) {
+            mds_result <- clustering$mds
+            plot(mds_result, col = rainbow(max(clustering$cluster))[clustering$cluster], 
+                 pch = 16, cex = 1.2,
+                 main = paste(toupper(clustering$method), "-", length(unique(clustering$cluster)), "Cluster"),
+                 xlab = "MDS Dimension 1", ylab = "MDS Dimension 2")
+            legend("topright", legend = paste("Cluster", 1:max(clustering$cluster)), 
+                   col = rainbow(max(clustering$cluster)), pch = 16)
+          }
+        }
+      }
       dev.off()
+    }
+  )
+  
+  output$download_cluster_map <- downloadHandler(
+    filename = function() { paste0("cluster_map_", Sys.Date(), ".png") },
+    content = function(file) {
+      # Buat static map untuk download
+      data <- values$current_data
+      if ("Cluster" %in% names(data) && "Latitude" %in% names(data)) {
+        
+        # Gunakan ggplot untuk membuat static map
+        library(ggplot2)
+        library(maps)
+        
+        # Get world map data
+        world_map <- map_data("world")
+        
+        # Create the plot
+        p <- ggplot() +
+          geom_polygon(data = world_map, aes(x = long, y = lat, group = group), 
+                       fill = "lightgray", color = "white", size = 0.1) +
+          geom_point(data = data, aes(x = Longitude, y = Latitude, color = Cluster), 
+                     size = 3, alpha = 0.8) +
+          scale_color_manual(values = rainbow(length(unique(data$Cluster)))) +
+          labs(title = paste("Cluster Map -", length(unique(data$Cluster)), "Clusters"),
+               x = "Longitude", y = "Latitude") +
+          theme_minimal() +
+          theme(
+            plot.title = element_text(hjust = 0.5, size = 16),
+            legend.position = "right"
+          ) +
+          coord_fixed(1.3)
+        
+        ggsave(file, plot = p, width = 12, height = 8, dpi = 300)
+      }
     }
   )
   
