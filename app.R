@@ -69,47 +69,33 @@ data_list <- load_data()
 original_data <- data_list$sovi
 distance_matrix <- data_list$distance
 
-# Helper functions
-create_interpretation <- function(test_result, test_type) {
-  switch(test_type,
-         "normality" = {
-           if (test_result$p.value > 0.05) {
-             "Interpretasi: Data mengikuti distribusi normal (p > 0.05). Asumsi normalitas terpenuhi untuk analisis parametrik."
-           } else {
-             "Interpretasi: Data tidak mengikuti distribusi normal (p ≤ 0.05). Pertimbangkan transformasi data atau gunakan uji non-parametrik."
-           }
-         },
-         "homogeneity" = {
-           if (test_result$p.value > 0.05) {
-             "Interpretasi: Varians antar kelompok homogen (p > 0.05). Asumsi homogenitas varians terpenuhi."
-           } else {
-             "Interpretasi: Varians antar kelompok tidak homogen (p ≤ 0.05). Pertimbangkan transformasi data atau gunakan uji yang robust terhadap heteroskedastisitas."
-           }
-         },
-         "t_test" = {
-           if (test_result$p.value < 0.05) {
-             paste0("Interpretasi: Terdapat perbedaan signifikan (p = ", round(test_result$p.value, 4), 
-                    "). Tolak H₀, terima H₁. Rata-rata kedua kelompok berbeda secara statistik.")
-           } else {
-             paste0("Interpretasi: Tidak terdapat perbedaan signifikan (p = ", round(test_result$p.value, 4), 
-                    "). Gagal tolak H₀. Rata-rata kedua kelompok tidak berbeda secara statistik.")
-           }
-         },
-         "anova" = {
-           if (test_result$`Pr(>F)`[1] < 0.05) {
-             paste0("Interpretasi: Terdapat perbedaan signifikan antar kelompok (p = ", round(test_result$`Pr(>F)`[1], 4), 
-                    "). Minimal ada satu kelompok yang berbeda.")
-           } else {
-             paste0("Interpretasi: Tidak terdapat perbedaan signifikan antar kelompok (p = ", round(test_result$`Pr(>F)`[1], 4), 
-                    "). Semua kelompok memiliki rata-rata yang sama.")
-           }
-         }
-  )
+# =================== CLUSTERING ANALYSIS (DISTANCE) ===================
+# Tambahkan di bawah load_data dan sebelum UI
+do_clustering <- function(distance_matrix, k = 3) {
+  # Jika distance_matrix adalah data.frame, konversi ke matrix
+  if (is.data.frame(distance_matrix)) {
+    mat <- as.matrix(distance_matrix)
+    # Jika ada kolom nama, buang
+    if (!is.numeric(mat[1,1])) mat <- mat[,-1]
+  } else {
+    mat <- distance_matrix
+  }
+  # Hierarchical clustering
+  hc <- hclust(as.dist(mat), method = "ward.D2")
+  cluster <- cutree(hc, k = k)
+  list(hc = hc, cluster = cluster)
 }
+
+# Lakukan clustering pada distance_matrix
+clustering_result <- do_clustering(distance_matrix, k = 3)
+cluster_assignment <- clustering_result$cluster
+
+# Integrasi cluster ke data SOVI (asumsi urutan sama)
+original_data$Cluster <- as.factor(cluster_assignment)
 
 # UI
 ui <- dashboardPage(
-  dashboardHeader(title = "Dashboard Statistik Terpadu - SOVI Analysis"),
+  dashboardHeader(title = "STATeddy"),
   
   dashboardSidebar(
     sidebarMenu(
@@ -127,7 +113,8 @@ ui <- dashboardPage(
                menuSubItem("ANOVA", tabName = "anova_tests")
       ),
       menuItem("Regresi Linear", tabName = "regression", icon = icon("line-chart")),
-      menuItem("Metadata", tabName = "metadata", icon = icon("info-circle"))
+      menuItem("Metadata", tabName = "metadata", icon = icon("info-circle")),
+      menuItem("Clustering (Distance)", tabName = "clustering", icon = icon("project-diagram"))
     )
   ),
   
@@ -977,20 +964,12 @@ ui <- dashboardPage(
       # =================== BERANDA ===================
       tabItem(tabName = "home",
               fluidRow(
-                box(width = 12, title = "Selamat Datang di Dashboard Statistik Terpadu", status = "primary", solidHeader = TRUE,
+                box(width = 12, title = "Selamat Datang di STATeddy", status = "primary", solidHeader = TRUE,
                     div(class = "fade-in",
-                        h3("Tentang Dashboard", class = "text-gradient"),
-                        p("Dashboard Statistik Terpadu adalah aplikasi web interaktif yang dikembangkan untuk analisis data SOVI (Social Vulnerability Index) secara komprehensif. Dashboard ini menyediakan berbagai fitur analisis statistik mulai dari eksplorasi data dasar hingga analisis regresi yang kompleks."),
+                        h3("Tentang STATeddy", class = "text-gradient"),
+                        p("STATeddy adalah aplikasi web interaktif yang dikembangkan untuk analisis data SOVI (Social Vulnerability Index) secara komprehensif. STATeddy menyediakan berbagai fitur analisis statistik mulai dari eksplorasi data dasar hingga analisis regresi yang kompleks."),
                         
-                        h4("Data yang Digunakan"),
-                        tags$ul(
-                          tags$li(strong("Dataset Utama:"), " SOVI (Social Vulnerability Index) Data"),
-                          tags$li(strong("Sumber:"), " Scientific Data Journal - Nature"),
-                          tags$li(strong("URL Data:"), tags$a(href = sovi_url, "SOVI Dataset", target = "_blank")),
-                          tags$li(strong("URL Metadata:"), tags$a(href = metadata_url, "Artikel Ilmiah", target = "_blank"))
-                        ),
-                        
-                        h4("Fitur Dashboard"),
+                        h4("Fitur STATeddy"),
                         tags$div(
                           style = "display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin: 20px 0;",
                           tags$div(class = "feature-card slide-in",
@@ -1624,6 +1603,21 @@ ui <- dashboardPage(
                     )
                 )
               )
+      ),
+      
+      # =================== CLUSTERING ANALYSIS (DISTANCE) ===================
+      tabItem(tabName = "clustering",
+        fluidRow(
+          box(width = 12, title = "Analisis Clustering Berdasarkan Distance Matrix", status = "info", solidHeader = TRUE,
+            p("Analisis clustering dilakukan berdasarkan matriks jarak antar wilayah. Hasil cluster dapat digunakan untuk analisis lebih lanjut dan visualisasi peta."),
+            selectInput("n_cluster", "Jumlah Cluster:", choices = 2:6, selected = 3),
+            actionButton("run_clustering", "Jalankan Clustering", class = "btn-primary"),
+            br(), br(),
+            plotOutput("dendrogram_plot", height = "350px"),
+            br(),
+            DT::dataTableOutput("cluster_table")
+          )
+        )
       )
     )
   )
@@ -3818,12 +3812,12 @@ Pastikan variabel yang dipilih adalah numerik.")
     },
     content = function(file) {
       doc <- officer::read_docx()
-      doc <- officer::body_add_par(doc, "METADATA LENGKAP DASHBOARD STATISTIK TERPADU", style = "heading 1")
+      doc <- officer::body_add_par(doc, "METADATA LENGKAP STATeddy", style = "heading 1")
       doc <- officer::body_add_par(doc, paste("Tanggal:", Sys.Date()))
       doc <- officer::body_add_par(doc, "")
       
       doc <- officer::body_add_par(doc, "INFORMASI UMUM:", style = "heading 2")
-      doc <- officer::body_add_par(doc, "Dashboard: Dashboard Statistik Terpadu")
+      doc <- officer::body_add_par(doc, "STATeddy: STATeddy")
       doc <- officer::body_add_par(doc, "Versi: 1.0")
       doc <- officer::body_add_par(doc, "Tanggal Pembuatan: 2024")
       doc <- officer::body_add_par(doc, "")
@@ -3848,6 +3842,46 @@ Pastikan variabel yang dipilih adalah numerik.")
   # Start analysis button
   observeEvent(input$start_analysis, {
     updateTabItems(session, "sidebar", "data_management")
+  })
+  
+  # =================== SERVER LOGIC UNTUK CLUSTERING ===================
+  # Tambahkan di server function, sebelum mapping
+  observeEvent(input$run_clustering, {
+    k <- input$n_cluster
+    clustering <- do_clustering(distance_matrix, k = k)
+    values$cluster_assignment <- as.factor(clustering$cluster)
+    values$hc <- clustering$hc
+    # Update data SOVI dengan cluster baru
+    values$current_data$Cluster <- values$cluster_assignment
+  })
+  
+  output$dendrogram_plot <- renderPlot({
+    hc <- if (!is.null(values$hc)) values$hc else clustering_result$hc
+    k <- if (!is.null(input$n_cluster)) input$n_cluster else 3
+    clus <- cutree(hc, k = k)
+    plot(hc, main = paste("Dendrogram (", k, "Cluster)"), xlab = "Wilayah", sub = "", cex = 0.7)
+    rect.hclust(hc, k = k, border = 2:(k+1))
+  })
+  
+  output$cluster_table <- DT::renderDataTable({
+    data <- values$current_data
+    if (!"Cluster" %in% names(data)) return(NULL)
+    data[, c("State", "County", "Cluster", "SOVI_Score")]
+  })
+  
+  # Pastikan data SOVI selalu punya kolom Cluster
+  observe({
+    if (!"Cluster" %in% names(values$current_data)) {
+      values$current_data$Cluster <- as.factor(cluster_assignment)
+    }
+  })
+  
+  # =================== TAMBAH CLUSTER DI PEMETAAN ===================
+  # Tambahkan "Cluster" ke dalam pilihan variabel peta
+  observe({
+    numeric_vars <- names(values$current_data)[sapply(values$current_data, is.numeric)]
+    factor_vars <- names(values$current_data)[sapply(values$current_data, is.factor)]
+    updateSelectInput(session, "map_variable", choices = c(numeric_vars, factor_vars))
   })
 }
 
