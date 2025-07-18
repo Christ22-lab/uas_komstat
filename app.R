@@ -54,14 +54,16 @@ load_data <- function() {
     n <- 100
     sovi_sample <- data.frame(
       ID = 1:n,
-      State = sample(c("CA", "TX", "FL", "NY", "PA"), n, replace = TRUE),
-      County = paste("County", 1:n),
+      State = sample(c("DKI Jakarta", "Jawa Barat", "Jawa Tengah", "Jawa Timur", "Sumatera Utara"), n, replace = TRUE),
+      County = paste("Kabupaten", 1:n),
       Population = rnorm(n, 50000, 15000),
       Income = rnorm(n, 45000, 12000),
       Education = rnorm(n, 85, 10),
       Age_65_Over = rnorm(n, 15, 5),
       Disability = rnorm(n, 12, 3),
-      SOVI_Score = rnorm(n, 0, 1)
+      SOVI_Score = rnorm(n, 0, 1),
+      Latitude = runif(n, -11, 6),   # Indonesia latitude range
+      Longitude = runif(n, 95, 141)  # Indonesia longitude range
     )
     distance_sample <- matrix(runif(n*n), nrow = n)
     list(sovi = sovi_sample, distance = distance_sample)
@@ -72,6 +74,13 @@ load_data <- function() {
 data_list <- load_data()
 original_data <- data_list$sovi
 distance_matrix <- data_list$distance
+
+# Tambahkan koordinat Indonesia ke original_data
+if (!"Latitude" %in% names(original_data) || !"Longitude" %in% names(original_data)) {
+  n_points <- nrow(original_data)
+  original_data$Latitude <- runif(n_points, -11, 6)   # Indonesia latitude range: 6°N to 11°S
+  original_data$Longitude <- runif(n_points, 95, 141) # Indonesia longitude range: 95°E to 141°E
+}
 
 # =================== CLUSTERING ANALYSIS (DISTANCE) ===================
 # Tambahkan di bawah load_data dan sebelum UI
@@ -2027,11 +2036,23 @@ server <- function(input, output, session) {
   observe({
     if (input$data_source == "default") {
       values$current_data <- original_data
+      # Tambahkan koordinat Indonesia jika belum ada
+      if (!"Latitude" %in% names(values$current_data) || !"Longitude" %in% names(values$current_data)) {
+        n_points <- nrow(values$current_data)
+        values$current_data$Latitude <- runif(n_points, -11, 6)   # Indonesia latitude range: 6°N to 11°S
+        values$current_data$Longitude <- runif(n_points, 95, 141) # Indonesia longitude range: 95°E to 141°E
+      }
     }
   })
   
   observeEvent(input$load_default, {
     values$current_data <- original_data
+    # Tambahkan koordinat Indonesia jika belum ada
+    if (!"Latitude" %in% names(values$current_data) || !"Longitude" %in% names(values$current_data)) {
+      n_points <- nrow(values$current_data)
+      values$current_data$Latitude <- runif(n_points, -11, 6)   # Indonesia latitude range: 6°N to 11°S
+      values$current_data$Longitude <- runif(n_points, 95, 141) # Indonesia longitude range: 95°E to 141°E
+    }
     showNotification("Data SOVI berhasil dimuat ulang!", type = "message")
   })
   
@@ -2051,6 +2072,14 @@ server <- function(input, output, session) {
           showNotification("Format file tidak didukung!", type = "error")
           return()
         }
+        
+        # Tambahkan koordinat Indonesia jika belum ada
+        if (!"Latitude" %in% names(values$current_data) || !"Longitude" %in% names(values$current_data)) {
+          n_points <- nrow(values$current_data)
+          values$current_data$Latitude <- runif(n_points, -11, 6)   # Indonesia latitude range: 6°N to 11°S
+          values$current_data$Longitude <- runif(n_points, 95, 141) # Indonesia longitude range: 95°E to 141°E
+        }
+        
         showNotification("File berhasil diupload!", type = "message")
       }, error = function(e) {
         showNotification(paste("Error loading file:", e$message), type = "error")
@@ -2419,31 +2448,32 @@ server <- function(input, output, session) {
       n_points <- min(nrow(values$current_data), 200)  # Reduced for performance
       indices <- sample(nrow(values$current_data), n_points)
       
-      # Generate more realistic US coordinates based on state data if available
+      # Generate realistic Indonesian coordinates based on province data if available
       if ("State" %in% names(values$current_data)) {
-        # Use state-based coordinates (simplified)
-        state_coords <- data.frame(
-          State = c("CA", "TX", "FL", "NY", "PA", "IL", "OH", "MI", "GA", "NC"),
-          lat = c(36.7783, 31.9686, 27.7663, 42.1657, 40.2732, 40.3363, 40.3888, 43.3266, 33.7490, 35.7596),
-          lng = c(-119.4179, -99.9018, -82.6404, -74.9481, -77.1017, -89.0022, -82.7649, -84.3426, -84.3426, -79.0193)
+        # Use province-based coordinates for Indonesia (major provinces)
+        province_coords <- data.frame(
+          State = c("DKI Jakarta", "Jawa Barat", "Jawa Tengah", "Jawa Timur", "Sumatera Utara", 
+                   "Sumatera Barat", "Sumatera Selatan", "Kalimantan Timur", "Sulawesi Selatan", "Bali"),
+          lat = c(-6.2088, -6.9175, -7.2575, -7.5360, 3.5952, -0.7893, -3.3194, -0.5022, -5.1477, -8.4095),
+          lng = c(106.8456, 107.6191, 110.1775, 112.2384, 98.6722, 100.6500, 103.9140, 117.1537, 119.4327, 115.1889)
         )
         
         sample_data <- values$current_data[indices, ]
-        map_coords <- merge(sample_data, state_coords, by = "State", all.x = TRUE)
+        map_coords <- merge(sample_data, province_coords, by = "State", all.x = TRUE)
         
-        # Add random variation to coordinates
-        map_coords$lat <- map_coords$lat + runif(nrow(map_coords), -2, 2)
-        map_coords$lng <- map_coords$lng + runif(nrow(map_coords), -2, 2)
+        # Add random variation to coordinates within Indonesia
+        map_coords$lat <- map_coords$lat + runif(nrow(map_coords), -1, 1)
+        map_coords$lng <- map_coords$lng + runif(nrow(map_coords), -1, 1)
         
-        # Fill missing coordinates with random US coordinates
+        # Fill missing coordinates with random Indonesian coordinates
         missing_coords <- is.na(map_coords$lat)
-        map_coords$lat[missing_coords] <- runif(sum(missing_coords), 25, 49)
-        map_coords$lng[missing_coords] <- runif(sum(missing_coords), -125, -65)
+        map_coords$lat[missing_coords] <- runif(sum(missing_coords), -11, 6)  # Indonesia latitude range
+        map_coords$lng[missing_coords] <- runif(sum(missing_coords), 95, 141) # Indonesia longitude range
       } else {
-        # Generate random US coordinates
+        # Generate random Indonesian coordinates
         map_coords <- values$current_data[indices, ]
-        map_coords$lat <- runif(n_points, 25, 49)
-        map_coords$lng <- runif(n_points, -125, -65)
+        map_coords$lat <- runif(n_points, -11, 6)   # Indonesia latitude range: 6°N to 11°S
+        map_coords$lng <- runif(n_points, 95, 141)  # Indonesia longitude range: 95°E to 141°E
       }
       
       map_coords$value <- map_coords[[input$map_variable]]
@@ -4178,6 +4208,14 @@ Pastikan variabel yang dipilih adalah numerik.")
     
     # Update data SOVI dengan cluster baru
     values$current_data$Cluster <- values$cluster_assignment
+    
+    # Tambahkan koordinat Indonesia untuk mapping clustering
+    if (!"Latitude" %in% names(values$current_data) || !"Longitude" %in% names(values$current_data)) {
+      n_points <- nrow(values$current_data)
+      # Generate koordinat Indonesia yang realistis
+      values$current_data$Latitude <- runif(n_points, -11, 6)   # Indonesia latitude range: 6°N to 11°S
+      values$current_data$Longitude <- runif(n_points, 95, 141) # Indonesia longitude range: 95°E to 141°E
+    }
   })
   
   output$dendrogram_plot <- renderPlot({
