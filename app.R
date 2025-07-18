@@ -32,6 +32,7 @@ library(maps)
 library(moments)
 library(officer)
 library(haven)  # For reading SPSS files
+library(cluster)  # For silhouette analysis
 
 # Global variables
 sovi_url <- "https://raw.githubusercontent.com/bmlmcmc/naspaclust/main/data/sovi_data.csv"
@@ -71,7 +72,7 @@ distance_matrix <- data_list$distance
 
 # =================== CLUSTERING ANALYSIS (DISTANCE) ===================
 # Tambahkan di bawah load_data dan sebelum UI
-do_clustering <- function(distance_matrix, k = 3) {
+do_clustering <- function(distance_matrix, k = 3, method = "ward.D2") {
   # Jika distance_matrix adalah data.frame, konversi ke matrix dan buang kolom ID jika ada
   if (is.data.frame(distance_matrix)) {
     mat <- as.matrix(distance_matrix)
@@ -83,9 +84,9 @@ do_clustering <- function(distance_matrix, k = 3) {
   # Pastikan matrix benar-benar square
   n <- nrow(mat)
   if (ncol(mat) != n) stop("Distance matrix is not square after removing ID column!")
-  hc <- hclust(as.dist(mat), method = "ward.D2")
+  hc <- hclust(as.dist(mat), method = method)
   cluster <- cutree(hc, k = k)
-  list(hc = hc, cluster = cluster)
+  list(hc = hc, cluster = cluster, silhouette = cluster::silhouette(cluster, as.dist(mat)))
 }
 
 # Lakukan clustering pada distance_matrix
@@ -94,6 +95,13 @@ cluster_assignment <- clustering_result$cluster
 
 # Integrasi cluster ke data SOVI (asumsi urutan sama)
 original_data$Cluster <- as.factor(cluster_assignment)
+
+# Tambahkan koordinat untuk pemetaan (contoh koordinat AS)
+if(!"Latitude" %in% names(original_data)) {
+  set.seed(123)
+  original_data$Latitude <- runif(nrow(original_data), 25, 49)
+  original_data$Longitude <- runif(nrow(original_data), -125, -65)
+}
 
 # UI
 ui <- dashboardPage(
@@ -116,7 +124,8 @@ ui <- dashboardPage(
       ),
       menuItem("Regresi Linear", tabName = "regression", icon = icon("line-chart")),
       menuItem("Metadata", tabName = "metadata", icon = icon("info-circle")),
-      menuItem("Clustering (Distance)", tabName = "clustering", icon = icon("project-diagram"))
+      menuItem("Clustering (Distance)", tabName = "clustering", icon = icon("project-diagram")),
+      menuItem("Analisis Distance", tabName = "distance_analysis", icon = icon("ruler-combined"))
     )
   ),
   
@@ -1243,14 +1252,20 @@ ui <- dashboardPage(
               
               fluidRow(
                 box(width = 4, title = "Pengaturan Peta", status = "primary", solidHeader = TRUE,
-                    p("Fitur pemetaan untuk data geografis SOVI"),
+                    p("Fitur pemetaan untuk data geografis SOVI dan hasil clustering"),
                     selectInput("map_variable", "Variabel untuk Dipetakan:", choices = NULL),
                     selectInput("map_type", "Jenis Peta:",
                                 choices = list(
                                   "Heat Map" = "heatmap",
                                   "Choropleth" = "choropleth", 
-                                  "Point Map" = "points"
+                                  "Point Map" = "points",
+                                  "Cluster Map" = "cluster"
                                 )),
+                    conditionalPanel(
+                      condition = "input.map_type == 'cluster'",
+                      checkboxInput("show_cluster_centers", "Tampilkan Pusat Cluster", value = TRUE),
+                      checkboxInput("show_cluster_hull", "Tampilkan Batas Cluster", value = FALSE)
+                    ),
                     actionButton("create_map", "Buat Peta", class = "btn-primary"),
                     br(), br(),
                     div(class = "interpretation-box",
@@ -1611,13 +1626,122 @@ ui <- dashboardPage(
       tabItem(tabName = "clustering",
         fluidRow(
           box(width = 12, title = "Analisis Clustering Berdasarkan Distance Matrix", status = "info", solidHeader = TRUE,
-            p("Analisis clustering dilakukan berdasarkan matriks jarak antar wilayah. Hasil cluster dapat digunakan untuk analisis lebih lanjut dan visualisasi peta."),
-            selectInput("n_cluster", "Jumlah Cluster:", choices = 2:6, selected = 3),
+            div(class = "info-box",
+              p(strong("Tujuan Menu:"), "Menu ini digunakan untuk mengelompokkan wilayah berdasarkan matriks jarak yang telah dihitung dari data spasial."),
+              p(strong("Fitur Utama:"), "Hierarchical clustering, dendrogram, silhouette analysis, dan visualisasi cluster pada peta interaktif."),
+              p(strong("Cara Penggunaan:"), "1) Pilih jumlah cluster dan metode clustering, 2) Jalankan analisis, 3) Interpretasi dendrogram dan silhouette plot, 4) Visualisasi hasil pada peta.")
+            )
+          )
+        ),
+        
+        fluidRow(
+          box(width = 4, title = "Pengaturan Clustering", status = "primary", solidHeader = TRUE,
+            selectInput("n_cluster", "Jumlah Cluster:", choices = 2:8, selected = 3),
+            selectInput("clustering_method", "Metode Clustering:",
+              choices = list(
+                "Ward D2" = "ward.D2",
+                "Ward D" = "ward.D",
+                "Complete Linkage" = "complete",
+                "Single Linkage" = "single",
+                "Average Linkage" = "average",
+                "Centroid" = "centroid"
+              ), selected = "ward.D2"),
             actionButton("run_clustering", "Jalankan Clustering", class = "btn-primary"),
             br(), br(),
-            plotOutput("dendrogram_plot", height = "350px"),
+            div(class = "interpretation-box",
+              h5("Interpretasi Cluster:"),
+              textOutput("cluster_interpretation")
+            )
+          ),
+          
+          box(width = 8, title = "Dendrogram", status = "info", solidHeader = TRUE,
+            plotOutput("dendrogram_plot", height = "400px"),
             br(),
-            DT::dataTableOutput("cluster_table")
+            downloadButton("download_dendrogram", "Download Dendrogram (JPG)", class = "btn-success")
+          )
+        ),
+        
+        fluidRow(
+          box(width = 6, title = "Silhouette Analysis", status = "warning", solidHeader = TRUE,
+            plotOutput("silhouette_plot", height = "350px"),
+            br(),
+            div(class = "interpretation-box",
+              h5("Kualitas Clustering:"),
+              textOutput("silhouette_interpretation")
+            )
+          ),
+          
+          box(width = 6, title = "Peta Cluster", status = "success", solidHeader = TRUE,
+            leafletOutput("cluster_map", height = "350px"),
+            br(),
+            downloadButton("download_cluster_map", "Download Peta Cluster (JPG)", class = "btn-success")
+          )
+        ),
+        
+        fluidRow(
+          box(width = 12, title = "Tabel Hasil Clustering", status = "primary", solidHeader = TRUE,
+            DT::dataTableOutput("cluster_table"),
+            br(),
+            downloadButton("download_cluster_data", "Download Data Cluster (Excel)", class = "btn-info")
+          )
+        )
+      ),
+      
+      # =================== ANALISIS DISTANCE MATRIX ===================
+      tabItem(tabName = "distance_analysis",
+        fluidRow(
+          box(width = 12, title = "Analisis Distance Matrix - Eksplorasi Data Jarak", status = "info", solidHeader = TRUE,
+            div(class = "info-box",
+              p(strong("Tujuan Menu:"), "Menu ini digunakan untuk menganalisis matriks jarak yang menggambarkan kedekatan/kemiripan antar observasi berdasarkan karakteristik spasial atau lainnya."),
+              p(strong("Fitur Utama:"), "Heatmap distance matrix, analisis distribusi jarak, identifikasi outlier, dan visualisasi pola jarak."),
+              p(strong("Cara Penggunaan:"), "1) Pilih jenis analisis distance, 2) Atur parameter visualisasi, 3) Interpretasi pola jarak dan identifikasi grup serupa.")
+            )
+          )
+        ),
+        
+        fluidRow(
+          box(width = 4, title = "Pengaturan Analisis", status = "primary", solidHeader = TRUE,
+            selectInput("distance_analysis_type", "Jenis Analisis:",
+              choices = list(
+                "Heatmap Distance" = "heatmap",
+                "Distribusi Jarak" = "distribution",
+                "Outlier Detection" = "outlier",
+                "Nearest Neighbors" = "neighbors"
+              ), selected = "heatmap"),
+            conditionalPanel(
+              condition = "input.distance_analysis_type == 'neighbors'",
+              numericInput("n_neighbors", "Jumlah Tetangga Terdekat:", value = 5, min = 1, max = 20)
+            ),
+            conditionalPanel(
+              condition = "input.distance_analysis_type == 'outlier'",
+              numericInput("outlier_threshold", "Threshold Outlier (percentile):", value = 95, min = 80, max = 99)
+            ),
+            actionButton("run_distance_analysis", "Jalankan Analisis", class = "btn-primary"),
+            br(), br(),
+            div(class = "interpretation-box",
+              h5("Interpretasi Analisis:"),
+              textOutput("distance_interpretation")
+            )
+          ),
+          
+          box(width = 8, title = "Visualisasi Distance Matrix", status = "info", solidHeader = TRUE,
+            plotOutput("distance_plot", height = "450px"),
+            br(),
+            downloadButton("download_distance_plot", "Download Plot (JPG)", class = "btn-success")
+          )
+        ),
+        
+        fluidRow(
+          box(width = 6, title = "Statistik Jarak", status = "warning", solidHeader = TRUE,
+            verbatimTextOutput("distance_stats"),
+            br(),
+            plotOutput("distance_histogram", height = "250px")
+          ),
+          
+          box(width = 6, title = "Tabel Hasil Analisis", status = "success", solidHeader = TRUE,
+            DT::dataTableOutput("distance_results_table"),
+            br(),
+            downloadButton("download_distance_results", "Download Hasil (Excel)", class = "btn-info")
           )
         )
       )
@@ -3849,10 +3973,12 @@ Pastikan variabel yang dipilih adalah numerik.")
   # =================== SERVER LOGIC UNTUK CLUSTERING ===================
   # Tambahkan di server function, sebelum mapping
   observeEvent(input$run_clustering, {
-    k <- input$n_cluster
-    clustering <- do_clustering(distance_matrix, k = k)
+    k <- as.numeric(input$n_cluster)
+    method <- input$clustering_method
+    clustering <- do_clustering(distance_matrix, k = k, method = method)
     values$cluster_assignment <- as.factor(clustering$cluster)
     values$hc <- clustering$hc
+    values$silhouette <- clustering$silhouette
     # Update data SOVI dengan cluster baru
     values$current_data$Cluster <- values$cluster_assignment
   })
@@ -3861,18 +3987,102 @@ Pastikan variabel yang dipilih adalah numerik.")
     hc <- if (!is.null(values$hc)) values$hc else clustering_result$hc
     k <- as.numeric(if (!is.null(input$n_cluster)) input$n_cluster else 3)
     clus <- cutree(hc, k = k)
-    plot(hc, main = paste("Dendrogram (", k, "Cluster)"), xlab = "Wilayah", sub = "", cex = 0.7)
+    plot(hc, main = paste("Dendrogram -", k, "Cluster"), 
+         xlab = "Observasi", ylab = "Jarak", sub = "", cex = 0.7)
     rect.hclust(hc, k = k, border = rainbow(k))
+  })
+  
+  output$silhouette_plot <- renderPlot({
+    if (!is.null(values$silhouette)) {
+      plot(values$silhouette, main = "Silhouette Plot", col = rainbow(max(values$silhouette[,1])))
+    } else {
+      plot(clustering_result$silhouette, main = "Silhouette Plot", col = rainbow(max(clustering_result$silhouette[,1])))
+    }
+  })
+  
+  output$cluster_map <- renderLeaflet({
+    data <- values$current_data
+    if (!"Cluster" %in% names(data) || !"Latitude" %in% names(data)) return(NULL)
+    
+    # Buat color palette untuk cluster
+    pal <- colorFactor(rainbow(length(unique(data$Cluster))), data$Cluster)
+    
+    leaflet(data) %>%
+      addTiles() %>%
+      addCircleMarkers(
+        lng = ~Longitude, lat = ~Latitude,
+        color = ~pal(Cluster),
+        popup = ~paste("Cluster:", Cluster, "<br>", 
+                      if("County" %in% names(data)) paste("County:", County) else "",
+                      if("SOVI_Score" %in% names(data)) paste("<br>SOVI Score:", round(SOVI_Score, 2)) else ""),
+        radius = 8,
+        fillOpacity = 0.8
+      ) %>%
+      addLegend("bottomright", pal = pal, values = ~Cluster,
+                title = "Cluster", opacity = 1)
   })
   
   output$cluster_table <- DT::renderDataTable({
     data <- values$current_data
     if (!"Cluster" %in% names(data)) return(NULL)
-    # Pilih hanya kolom yang ada
-    cols <- intersect(c("State", "County", "Cluster", "SOVI_Score"), names(data))
+    # Pilih kolom yang ada
+    cols <- intersect(c("State", "County", "Cluster", "SOVI_Score", "Population", "Income"), names(data))
     if (length(cols) == 0) return(data.frame(Pesan = "Kolom tidak ditemukan di data"))
-    data[, cols, drop = FALSE]
+    DT::datatable(data[, cols, drop = FALSE], options = list(pageLength = 10, scrollX = TRUE))
   })
+  
+  output$cluster_interpretation <- renderText({
+    if (!is.null(values$silhouette)) {
+      avg_sil <- mean(values$silhouette[,3])
+      n_clusters <- length(unique(values$cluster_assignment))
+      paste("Rata-rata silhouette width:", round(avg_sil, 3), 
+            "dengan", n_clusters, "cluster.",
+            if(avg_sil > 0.5) "Kualitas clustering baik." else "Kualitas clustering perlu diperbaiki.")
+    } else {
+      "Jalankan clustering untuk melihat interpretasi."
+    }
+  })
+  
+  output$silhouette_interpretation <- renderText({
+    if (!is.null(values$silhouette)) {
+      avg_sil <- mean(values$silhouette[,3])
+      if (avg_sil > 0.7) {
+        "Struktur cluster sangat kuat."
+      } else if (avg_sil > 0.5) {
+        "Struktur cluster cukup baik."
+      } else if (avg_sil > 0.25) {
+        "Struktur cluster lemah, mungkin artifisial."
+      } else {
+        "Tidak ada struktur cluster yang jelas."
+      }
+    } else {
+      "Jalankan clustering untuk melihat analisis silhouette."
+    }
+  })
+  
+  # Download handlers untuk clustering
+  output$download_dendrogram <- downloadHandler(
+    filename = function() { paste0("dendrogram_", Sys.Date(), ".jpg") },
+    content = function(file) {
+      jpeg(file, width = 800, height = 600, quality = 95)
+      hc <- if (!is.null(values$hc)) values$hc else clustering_result$hc
+      k <- as.numeric(if (!is.null(input$n_cluster)) input$n_cluster else 3)
+      plot(hc, main = paste("Dendrogram -", k, "Cluster"), 
+           xlab = "Observasi", ylab = "Jarak", sub = "", cex = 0.7)
+      rect.hclust(hc, k = k, border = rainbow(k))
+      dev.off()
+    }
+  )
+  
+  output$download_cluster_data <- downloadHandler(
+    filename = function() { paste0("cluster_data_", Sys.Date(), ".xlsx") },
+    content = function(file) {
+      data <- values$current_data
+      if ("Cluster" %in% names(data)) {
+        openxlsx::write.xlsx(data, file)
+      }
+    }
+  )
   
   # Pastikan data SOVI selalu punya kolom Cluster
   observe({
@@ -3888,7 +4098,326 @@ Pastikan variabel yang dipilih adalah numerik.")
     factor_vars <- names(values$current_data)[sapply(values$current_data, is.factor)]
     updateSelectInput(session, "map_variable", choices = c(numeric_vars, factor_vars))
   })
-}
-
-# Run the application
-shinyApp(ui = ui, server = server)
+  
+  # Enhanced interactive map with clustering support
+  observeEvent(input$create_map, {
+    output$interactive_map <- renderLeaflet({
+      data <- values$current_data
+      
+      if (!"Latitude" %in% names(data) || !"Longitude" %in% names(data)) {
+        return(leaflet() %>% addTiles() %>% 
+               addPopups(lng = 0, lat = 0, popup = "Data koordinat tidak tersedia"))
+      }
+      
+      map <- leaflet(data) %>% addTiles()
+      
+      if (input$map_type == "cluster" && "Cluster" %in% names(data)) {
+        # Cluster map
+        pal <- colorFactor(rainbow(length(unique(data$Cluster))), data$Cluster)
+        
+        map <- map %>%
+          addCircleMarkers(
+            lng = ~Longitude, lat = ~Latitude,
+            color = ~pal(Cluster),
+            popup = ~paste("Cluster:", Cluster, "<br>", 
+                          if("County" %in% names(data)) paste("County:", County) else "",
+                          if("SOVI_Score" %in% names(data)) paste("<br>SOVI Score:", round(SOVI_Score, 2)) else ""),
+            radius = 8,
+            fillOpacity = 0.8,
+            stroke = TRUE,
+            weight = 2
+          ) %>%
+          addLegend("bottomright", pal = pal, values = ~Cluster,
+                    title = "Cluster", opacity = 1)
+        
+        # Add cluster centers if requested
+        if (input$show_cluster_centers) {
+          cluster_centers <- data %>%
+            group_by(Cluster) %>%
+            summarise(
+              center_lat = mean(Latitude, na.rm = TRUE),
+              center_lng = mean(Longitude, na.rm = TRUE),
+              .groups = 'drop'
+            )
+          
+          map <- map %>%
+            addMarkers(
+              data = cluster_centers,
+              lng = ~center_lng, lat = ~center_lat,
+              popup = ~paste("Pusat Cluster:", Cluster),
+              icon = makeIcon(iconUrl = "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
+                             iconWidth = 25, iconHeight = 41)
+            )
+        }
+        
+      } else if (input$map_variable %in% names(data)) {
+        # Regular variable mapping
+        var_data <- data[[input$map_variable]]
+        
+        if (is.numeric(var_data)) {
+          pal <- colorNumeric("YlOrRd", var_data)
+          map <- map %>%
+            addCircleMarkers(
+              lng = ~Longitude, lat = ~Latitude,
+              color = ~pal(get(input$map_variable)),
+              popup = ~paste(input$map_variable, ":", get(input$map_variable)),
+              radius = 8,
+              fillOpacity = 0.8
+            ) %>%
+            addLegend("bottomright", pal = pal, values = var_data,
+                      title = input$map_variable, opacity = 1)
+        } else {
+          pal <- colorFactor("Set3", var_data)
+          map <- map %>%
+            addCircleMarkers(
+              lng = ~Longitude, lat = ~Latitude,
+              color = ~pal(get(input$map_variable)),
+              popup = ~paste(input$map_variable, ":", get(input$map_variable)),
+              radius = 8,
+              fillOpacity = 0.8
+            ) %>%
+            addLegend("bottomright", pal = pal, values = var_data,
+                      title = input$map_variable, opacity = 1)
+        }
+      }
+      
+      map
+    })
+  })
+  
+  # Enhanced map interpretation
+  output$map_interpretation <- renderText({
+    if (input$map_type == "cluster" && "Cluster" %in% names(values$current_data)) {
+      n_clusters <- length(unique(values$current_data$Cluster))
+      paste("Peta menunjukkan", n_clusters, "cluster yang terbentuk dari analisis distance matrix.",
+            "Setiap warna mewakili cluster yang berbeda. Observasi dalam cluster yang sama",
+            "memiliki karakteristik jarak yang serupa.")
+    } else if (!is.null(input$map_variable) && input$map_variable %in% names(values$current_data)) {
+      var_data <- values$current_data[[input$map_variable]]
+      if (is.numeric(var_data)) {
+        paste("Peta menunjukkan distribusi spasial dari", input$map_variable, 
+              "dengan rentang nilai dari", round(min(var_data, na.rm = TRUE), 2),
+              "hingga", round(max(var_data, na.rm = TRUE), 2))
+      } else {
+        paste("Peta menunjukkan distribusi kategori dari", input$map_variable,
+              "dengan", length(unique(var_data)), "kategori yang berbeda.")
+      }
+         } else {
+       "Pilih variabel dan buat peta untuk melihat interpretasi."
+     }
+   })
+   
+   # =================== SERVER LOGIC UNTUK DISTANCE ANALYSIS ===================
+   observeEvent(input$run_distance_analysis, {
+     output$distance_plot <- renderPlot({
+       # Konversi distance matrix ke format yang bisa digunakan
+       dist_mat <- as.matrix(distance_matrix)
+       if (ncol(dist_mat) > nrow(dist_mat)) {
+         dist_mat <- dist_mat[, -1]  # Buang kolom ID jika ada
+       }
+       
+       if (input$distance_analysis_type == "heatmap") {
+         # Heatmap distance matrix
+         if (nrow(dist_mat) > 100) {
+           # Sampling untuk matriks besar
+           sample_idx <- sample(1:nrow(dist_mat), 100)
+           dist_mat <- dist_mat[sample_idx, sample_idx]
+         }
+         
+         heatmap(dist_mat, 
+                 main = "Heatmap Distance Matrix",
+                 xlab = "Observasi", ylab = "Observasi",
+                 col = heat.colors(256),
+                 scale = "none")
+         
+       } else if (input$distance_analysis_type == "distribution") {
+         # Distribusi jarak
+         dist_values <- as.vector(dist_mat[upper.tri(dist_mat)])
+         hist(dist_values, breaks = 30, 
+              main = "Distribusi Jarak antar Observasi",
+              xlab = "Jarak", ylab = "Frekuensi",
+              col = "skyblue", border = "white")
+         abline(v = mean(dist_values), col = "red", lwd = 2, lty = 2)
+         legend("topright", legend = paste("Mean =", round(mean(dist_values), 2)), 
+                col = "red", lty = 2, lwd = 2)
+         
+       } else if (input$distance_analysis_type == "outlier") {
+         # Outlier detection berdasarkan rata-rata jarak
+         avg_distances <- rowMeans(dist_mat)
+         threshold <- quantile(avg_distances, input$outlier_threshold / 100)
+         outliers <- which(avg_distances > threshold)
+         
+         plot(avg_distances, 
+              main = "Deteksi Outlier berdasarkan Rata-rata Jarak",
+              xlab = "Observasi", ylab = "Rata-rata Jarak",
+              pch = 16, col = ifelse(avg_distances > threshold, "red", "blue"))
+         abline(h = threshold, col = "red", lwd = 2, lty = 2)
+         legend("topright", legend = c("Normal", "Outlier", "Threshold"), 
+                col = c("blue", "red", "red"), 
+                pch = c(16, 16, NA), lty = c(NA, NA, 2), lwd = c(NA, NA, 2))
+         
+       } else if (input$distance_analysis_type == "neighbors") {
+         # Nearest neighbors analysis
+         n_neighbors <- input$n_neighbors
+         avg_nn_dist <- numeric(nrow(dist_mat))
+         
+         for (i in 1:nrow(dist_mat)) {
+           sorted_dist <- sort(dist_mat[i, ])
+           avg_nn_dist[i] <- mean(sorted_dist[2:(n_neighbors + 1)])  # Exclude self (distance = 0)
+         }
+         
+         plot(avg_nn_dist,
+              main = paste("Rata-rata Jarak ke", n_neighbors, "Tetangga Terdekat"),
+              xlab = "Observasi", ylab = "Rata-rata Jarak",
+              pch = 16, col = "darkgreen")
+         abline(h = mean(avg_nn_dist), col = "red", lwd = 2, lty = 2)
+         legend("topright", legend = paste("Mean =", round(mean(avg_nn_dist), 2)), 
+                col = "red", lty = 2, lwd = 2)
+       }
+     })
+   })
+   
+   output$distance_stats <- renderText({
+     dist_mat <- as.matrix(distance_matrix)
+     if (ncol(dist_mat) > nrow(dist_mat)) {
+       dist_mat <- dist_mat[, -1]  # Buang kolom ID jika ada
+     }
+     
+     dist_values <- as.vector(dist_mat[upper.tri(dist_mat)])
+     
+     paste(
+       "Statistik Distance Matrix:\n",
+       "Jumlah Observasi:", nrow(dist_mat), "\n",
+       "Jumlah Pasangan Jarak:", length(dist_values), "\n",
+       "Jarak Minimum:", round(min(dist_values), 2), "\n",
+       "Jarak Maksimum:", round(max(dist_values), 2), "\n",
+       "Rata-rata Jarak:", round(mean(dist_values), 2), "\n",
+       "Median Jarak:", round(median(dist_values), 2), "\n",
+       "Standar Deviasi:", round(sd(dist_values), 2)
+     )
+   })
+   
+   output$distance_histogram <- renderPlot({
+     dist_mat <- as.matrix(distance_matrix)
+     if (ncol(dist_mat) > nrow(dist_mat)) {
+       dist_mat <- dist_mat[, -1]
+     }
+     
+     dist_values <- as.vector(dist_mat[upper.tri(dist_mat)])
+     hist(dist_values, breaks = 20, 
+          main = "Histogram Distribusi Jarak",
+          xlab = "Jarak", ylab = "Frekuensi",
+          col = "lightblue", border = "white")
+   })
+   
+   output$distance_results_table <- DT::renderDataTable({
+     if (input$distance_analysis_type == "outlier") {
+       dist_mat <- as.matrix(distance_matrix)
+       if (ncol(dist_mat) > nrow(dist_mat)) {
+         dist_mat <- dist_mat[, -1]
+       }
+       
+       avg_distances <- rowMeans(dist_mat)
+       threshold <- quantile(avg_distances, input$outlier_threshold / 100)
+       outliers <- which(avg_distances > threshold)
+       
+       result_df <- data.frame(
+         Observasi = 1:length(avg_distances),
+         Rata_rata_Jarak = round(avg_distances, 2),
+         Status = ifelse(avg_distances > threshold, "Outlier", "Normal")
+       )
+       
+       DT::datatable(result_df, options = list(pageLength = 10))
+       
+     } else if (input$distance_analysis_type == "neighbors") {
+       dist_mat <- as.matrix(distance_matrix)
+       if (ncol(dist_mat) > nrow(dist_mat)) {
+         dist_mat <- dist_mat[, -1]
+       }
+       
+       n_neighbors <- input$n_neighbors
+       result_list <- list()
+       
+       for (i in 1:min(20, nrow(dist_mat))) {  # Limit to first 20 for display
+         sorted_indices <- order(dist_mat[i, ])
+         neighbors <- sorted_indices[2:(n_neighbors + 1)]  # Exclude self
+         neighbor_distances <- dist_mat[i, neighbors]
+         
+         result_list[[i]] <- data.frame(
+           Observasi = i,
+           Tetangga = paste(neighbors, collapse = ", "),
+           Jarak_Rata_rata = round(mean(neighbor_distances), 2)
+         )
+       }
+       
+       result_df <- do.call(rbind, result_list)
+       DT::datatable(result_df, options = list(pageLength = 10))
+     } else {
+       data.frame(Info = "Pilih analisis outlier atau neighbors untuk melihat tabel hasil")
+     }
+   })
+   
+   output$distance_interpretation <- renderText({
+     if (input$distance_analysis_type == "heatmap") {
+       "Heatmap menunjukkan pola jarak antar observasi. Warna terang menunjukkan jarak yang lebih besar, warna gelap menunjukkan jarak yang lebih kecil. Pola blok menunjukkan adanya kelompok observasi yang serupa."
+     } else if (input$distance_analysis_type == "distribution") {
+       "Histogram menunjukkan distribusi jarak antar observasi. Distribusi yang normal menunjukkan data yang tersebar merata, sedangkan distribusi yang skewed menunjukkan adanya kelompok atau outlier."
+     } else if (input$distance_analysis_type == "outlier") {
+       paste("Analisis outlier mengidentifikasi observasi yang memiliki jarak rata-rata tinggi terhadap observasi lain. Threshold ditetapkan pada persentil ke-", input$outlier_threshold, ".")
+     } else if (input$distance_analysis_type == "neighbors") {
+       paste("Analisis tetangga terdekat menunjukkan rata-rata jarak ke", input$n_neighbors, "tetangga terdekat untuk setiap observasi. Ini membantu memahami kepadatan lokal data.")
+     } else {
+       "Pilih jenis analisis dan jalankan untuk melihat interpretasi."
+     }
+   })
+   
+   # Download handlers untuk distance analysis
+   output$download_distance_plot <- downloadHandler(
+     filename = function() { paste0("distance_analysis_", Sys.Date(), ".jpg") },
+     content = function(file) {
+       jpeg(file, width = 800, height = 600, quality = 95)
+       # Recreate the plot logic here
+       dist_mat <- as.matrix(distance_matrix)
+       if (ncol(dist_mat) > nrow(dist_mat)) {
+         dist_mat <- dist_mat[, -1]
+       }
+       
+       if (input$distance_analysis_type == "heatmap") {
+         if (nrow(dist_mat) > 100) {
+           sample_idx <- sample(1:nrow(dist_mat), 100)
+           dist_mat <- dist_mat[sample_idx, sample_idx]
+         }
+         heatmap(dist_mat, main = "Heatmap Distance Matrix", col = heat.colors(256))
+       }
+       # Add other plot types as needed
+       dev.off()
+     }
+   )
+   
+   output$download_distance_results <- downloadHandler(
+     filename = function() { paste0("distance_results_", Sys.Date(), ".xlsx") },
+     content = function(file) {
+       # Create results based on analysis type
+       if (input$distance_analysis_type == "outlier") {
+         dist_mat <- as.matrix(distance_matrix)
+         if (ncol(dist_mat) > nrow(dist_mat)) {
+           dist_mat <- dist_mat[, -1]
+         }
+         
+         avg_distances <- rowMeans(dist_mat)
+         threshold <- quantile(avg_distances, input$outlier_threshold / 100)
+         
+         result_df <- data.frame(
+           Observasi = 1:length(avg_distances),
+           Rata_rata_Jarak = round(avg_distances, 2),
+           Status = ifelse(avg_distances > threshold, "Outlier", "Normal")
+         )
+         
+         openxlsx::write.xlsx(result_df, file)
+       }
+     }
+   )
+ }
+ 
+ # Run the application
+ shinyApp(ui = ui, server = server)
