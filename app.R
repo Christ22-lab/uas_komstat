@@ -3859,16 +3859,19 @@ Pastikan variabel yang dipilih adalah numerik.")
   
   output$dendrogram_plot <- renderPlot({
     hc <- if (!is.null(values$hc)) values$hc else clustering_result$hc
-    k <- if (!is.null(input$n_cluster)) input$n_cluster else 3
+    k <- as.numeric(if (!is.null(input$n_cluster)) input$n_cluster else 3)
     clus <- cutree(hc, k = k)
     plot(hc, main = paste("Dendrogram (", k, "Cluster)"), xlab = "Wilayah", sub = "", cex = 0.7)
-    rect.hclust(hc, k = k, border = 2:(k+1))
+    rect.hclust(hc, k = k, border = rainbow(k))
   })
   
   output$cluster_table <- DT::renderDataTable({
     data <- values$current_data
     if (!"Cluster" %in% names(data)) return(NULL)
-    data[, c("State", "County", "Cluster", "SOVI_Score")]
+    # Pilih hanya kolom yang ada
+    cols <- intersect(c("State", "County", "Cluster", "SOVI_Score"), names(data))
+    if (length(cols) == 0) return(data.frame(Pesan = "Kolom tidak ditemukan di data"))
+    data[, cols, drop = FALSE]
   })
   
   # Pastikan data SOVI selalu punya kolom Cluster
