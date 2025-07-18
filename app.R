@@ -72,15 +72,17 @@ distance_matrix <- data_list$distance
 # =================== CLUSTERING ANALYSIS (DISTANCE) ===================
 # Tambahkan di bawah load_data dan sebelum UI
 do_clustering <- function(distance_matrix, k = 3) {
-  # Jika distance_matrix adalah data.frame, konversi ke matrix
+  # Jika distance_matrix adalah data.frame, konversi ke matrix dan buang kolom ID jika ada
   if (is.data.frame(distance_matrix)) {
     mat <- as.matrix(distance_matrix)
-    # Jika ada kolom nama, buang
-    if (!is.numeric(mat[1,1])) mat <- mat[,-1]
+    # Jika kolom pertama bukan numeric (biasanya ID), buang
+    if (!is.numeric(mat[1,2])) mat <- mat[,-1] else mat <- mat[,-1] # selalu buang kolom pertama (ID)
   } else {
     mat <- distance_matrix
   }
-  # Hierarchical clustering
+  # Pastikan matrix benar-benar square
+  n <- nrow(mat)
+  if (ncol(mat) != n) stop("Distance matrix is not square after removing ID column!")
   hc <- hclust(as.dist(mat), method = "ward.D2")
   cluster <- cutree(hc, k = k)
   list(hc = hc, cluster = cluster)
