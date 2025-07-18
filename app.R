@@ -128,6 +128,65 @@ do_clustering <- function(distance_matrix, k = 3, method = "ward.D2", cluster_me
 clustering_result <- do_clustering(distance_matrix, k = 3)
 cluster_assignment <- clustering_result$cluster
 
+# =================== HELPER FUNCTIONS ===================
+# Function to create statistical interpretations
+create_interpretation <- function(test_result, test_type) {
+  p_value <- test_result$p.value
+  alpha <- 0.05
+  
+  if (test_type == "normality") {
+    if (p_value > alpha) {
+      return(paste0("**KESIMPULAN:** p-value (", format(p_value, scientific = TRUE), ") > α (", alpha, 
+                   "), maka GAGAL TOLAK H₀.\n",
+                   "**INTERPRETASI:** Data berdistribusi normal pada tingkat signifikansi 5%.\n",
+                   "**REKOMENDASI:** Anda dapat menggunakan uji statistik parametrik."))
+    } else {
+      return(paste0("**KESIMPULAN:** p-value (", format(p_value, scientific = TRUE), ") ≤ α (", alpha, 
+                   "), maka TOLAK H₀.\n",
+                   "**INTERPRETASI:** Data tidak berdistribusi normal pada tingkat signifikansi 5%.\n",
+                   "**REKOMENDASI:** Gunakan uji statistik non-parametrik atau transformasi data."))
+    }
+  } else if (test_type == "homogeneity") {
+    if (p_value > alpha) {
+      return(paste0("**KESIMPULAN:** p-value (", format(p_value, scientific = TRUE), ") > α (", alpha, 
+                   "), maka GAGAL TOLAK H₀.\n",
+                   "**INTERPRETASI:** Varians antar kelompok homogen (sama) pada tingkat signifikansi 5%.\n",
+                   "**REKOMENDASI:** Asumsi homogenitas varians terpenuhi untuk ANOVA."))
+    } else {
+      return(paste0("**KESIMPULAN:** p-value (", format(p_value, scientific = TRUE), ") ≤ α (", alpha, 
+                   "), maka TOLAK H₀.\n",
+                   "**INTERPRETASI:** Varians antar kelompok tidak homogen pada tingkat signifikansi 5%.\n",
+                   "**REKOMENDASI:** Gunakan uji Welch's ANOVA atau transformasi data."))
+    }
+  } else if (test_type == "t_test") {
+    if (p_value > alpha) {
+      return(paste0("**KESIMPULAN:** p-value (", format(p_value, scientific = TRUE), ") > α (", alpha, 
+                   "), maka GAGAL TOLAK H₀.\n",
+                   "**INTERPRETASI:** Tidak ada perbedaan signifikan pada tingkat signifikansi 5%.\n",
+                   "**REKOMENDASI:** Terima hipotesis nol."))
+    } else {
+      return(paste0("**KESIMPULAN:** p-value (", format(p_value, scientific = TRUE), ") ≤ α (", alpha, 
+                   "), maka TOLAK H₀.\n",
+                   "**INTERPRETASI:** Terdapat perbedaan signifikan pada tingkat signifikansi 5%.\n",
+                   "**REKOMENDASI:** Tolak hipotesis nol."))
+    }
+  } else if (test_type == "anova") {
+    if (p_value > alpha) {
+      return(paste0("**KESIMPULAN:** p-value (", format(p_value, scientific = TRUE), ") > α (", alpha, 
+                   "), maka GAGAL TOLAK H₀.\n",
+                   "**INTERPRETASI:** Tidak ada perbedaan rata-rata antar kelompok pada tingkat signifikansi 5%.\n",
+                   "**REKOMENDASI:** Semua kelompok memiliki rata-rata yang sama."))
+    } else {
+      return(paste0("**KESIMPULAN:** p-value (", format(p_value, scientific = TRUE), ") ≤ α (", alpha, 
+                   "), maka TOLAK H₀.\n",
+                   "**INTERPRETASI:** Terdapat perbedaan rata-rata antar kelompok pada tingkat signifikansi 5%.\n",
+                   "**REKOMENDASI:** Lakukan uji post-hoc untuk mengetahui kelompok mana yang berbeda."))
+    }
+  }
+  
+  return("Interpretasi tidak tersedia untuk jenis uji ini.")
+}
+
 # Integrasi cluster ke data SOVI (asumsi urutan sama)
 original_data$Cluster <- as.factor(cluster_assignment)
 
