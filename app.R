@@ -138,9 +138,12 @@ do_clustering <- function(distance_matrix, k = 3, method = "ward.D2", cluster_me
   }
 }
 
-# Lakukan clustering pada distance_matrix
-clustering_result <- do_clustering(distance_matrix, k = 3)
+# Lakukan clustering pada distance_matrix untuk inisialisasi default
+clustering_result <- do_clustering(distance_matrix, k = 3, cluster_method = "hierarchical")
 cluster_assignment <- clustering_result$cluster
+
+# Integrasi cluster ke data SOVI untuk default state
+sovi_data$Cluster <- as.factor(cluster_assignment)
 
 # =================== HELPER FUNCTIONS ===================
 # Function to create statistical interpretations
@@ -201,8 +204,8 @@ create_interpretation <- function(test_result, test_type) {
   return("Interpretasi tidak tersedia untuk jenis uji ini.")
 }
 
-# Integrasi cluster ke data SOVI (asumsi urutan sama)
-original_data$Cluster <- as.factor(cluster_assignment)
+# Set original_data sama dengan sovi_data yang sudah memiliki cluster
+original_data <- sovi_data
 
 # Tambahkan koordinat untuk pemetaan (contoh koordinat AS)
 if(!"Latitude" %in% names(original_data)) {
@@ -2162,6 +2165,16 @@ ui <- dashboardPage(
 
 # Server
 server <- function(input, output, session) {
+  # Inisialisasi saat server start
+  observe({
+    # Pastikan data default ter-load dengan cluster assignment yang benar
+    if (is.null(values$current_data)) {
+      values$current_data <- sovi_data
+      values$current_data$Cluster <- as.factor(cluster_assignment)
+      values$clustering_result <- clustering_result
+      values$silhouette <- clustering_result$silhouette
+    }
+  })
   
   # Reactive values
   values <- reactiveValues(
@@ -4629,12 +4642,17 @@ Pastikan variabel yang dipilih adalah numerik.")
     # Update data SOVI dengan cluster baru
     values$current_data$Cluster <- values$cluster_assignment
     
-    # Tambahkan koordinat Indonesia untuk mapping clustering
-    if (!"Latitude" %in% names(values$current_data) || !"Longitude" %in% names(values$current_data)) {
+    # Pastikan menggunakan koordinat riil dari SOVI data, bukan random
+    if (nrow(values$current_data) == nrow(sovi_data)) {
+      # Gunakan koordinat riil dari SOVI data
+      values$current_data$Latitude <- sovi_data$Latitude
+      values$current_data$Longitude <- sovi_data$Longitude
+      values$current_data$County <- sovi_data$County
+    } else if (!"Latitude" %in% names(values$current_data) || !"Longitude" %in% names(values$current_data)) {
+      # Fallback jika data custom
       n_points <- nrow(values$current_data)
-      # Generate koordinat Indonesia yang realistis
-      values$current_data$Latitude <- runif(n_points, -11, 6)   # Indonesia latitude range: 6°N to 11°S
-      values$current_data$Longitude <- runif(n_points, 95, 141) # Indonesia longitude range: 95°E to 141°E
+      values$current_data$Latitude <- runif(n_points, -11, 6)   
+      values$current_data$Longitude <- runif(n_points, 95, 141) 
     }
   })
   
