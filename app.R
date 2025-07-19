@@ -110,6 +110,8 @@ do_clustering <- function(distance_matrix, k = 3, method = "ward.D2", cluster_me
     # Untuk k-means, kita perlu koordinat, bukan distance matrix
     # Gunakan MDS untuk mendapatkan koordinat dari distance matrix
     mds_result <- cmdscale(dist_obj, k = 2)
+    # Balik sumbu Y untuk orientasi yang benar (Indonesia tidak terbalik)
+    mds_result[,2] <- -mds_result[,2]
     km <- kmeans(mds_result, centers = k, nstart = 25)
     cluster <- km$cluster
     silhouette_result <- cluster::silhouette(cluster, dist_obj)
@@ -125,6 +127,8 @@ do_clustering <- function(distance_matrix, k = 3, method = "ward.D2", cluster_me
   } else if (cluster_method == "dbscan") {
     # DBSCAN - perlu koordinat dari MDS
     mds_result <- cmdscale(dist_obj, k = 2)
+    # Balik sumbu Y untuk orientasi yang benar (Indonesia tidak terbalik)
+    mds_result[,2] <- -mds_result[,2]
     db_result <- dbscan::dbscan(mds_result, eps = eps, minPts = minPts)
     cluster <- db_result$cluster
     # Untuk DBSCAN, noise points memiliki cluster = 0, ubah ke cluster terpisah
@@ -4662,6 +4666,9 @@ Pastikan variabel yang dipilih adalah numerik.")
         }
         mds_result <- cmdscale(as.dist(dist_mat), k = 2)
         
+        # Balik sumbu Y untuk orientasi yang benar (Indonesia tidak terbalik)
+        mds_result[,2] <- -mds_result[,2]
+        
         plot(mds_result, col = rainbow(max(clustering$cluster))[clustering$cluster], 
              pch = 16, cex = 1.2,
              main = paste("K-Medoids (PAM) -", length(unique(clustering$cluster)), "Cluster"),
@@ -4671,6 +4678,10 @@ Pastikan variabel yang dipilih adalah numerik.")
         
       } else if (clustering$method %in% c("kmeans", "dbscan")) {
         mds_result <- clustering$mds
+        
+        # Balik sumbu Y untuk orientasi yang benar (Indonesia tidak terbalik)
+        mds_result[,2] <- -mds_result[,2]
+        
         plot(mds_result, col = rainbow(max(clustering$cluster))[clustering$cluster], 
              pch = 16, cex = 1.2,
              main = paste(toupper(clustering$method), "-", length(unique(clustering$cluster)), "Cluster"),
@@ -4693,22 +4704,45 @@ Pastikan variabel yang dipilih adalah numerik.")
     data <- values$current_data
     if (!"Cluster" %in% names(data) || !"Latitude" %in% names(data)) return(NULL)
     
-    # Buat color palette untuk cluster
-    pal <- colorFactor(rainbow(length(unique(data$Cluster))), data$Cluster)
+    # Buat color palette yang konsisten dengan visualisasi clustering
+    cluster_colors <- rainbow(length(unique(data$Cluster)))
+    pal <- colorFactor(cluster_colors, data$Cluster)
     
+    # Set view ke Indonesia dengan zoom yang tepat
     leaflet(data) %>%
       addTiles() %>%
+      setView(lng = 118, lat = -2, zoom = 5) %>%  # Pusat Indonesia
       addCircleMarkers(
         lng = ~Longitude, lat = ~Latitude,
-        color = ~pal(Cluster),
-        popup = ~paste("Cluster:", Cluster, "<br>", 
-                      if("County" %in% names(data)) paste("County:", County) else "",
-                      if("SOVI_Score" %in% names(data)) paste("<br>SOVI Score:", round(SOVI_Score, 2)) else ""),
-        radius = 8,
-        fillOpacity = 0.8
+        color = "white",  # Border putih
+        fillColor = ~pal(Cluster),
+        weight = 1,  # Border tipis
+        radius = 6,  # Ukuran marker lebih kecil dan konsisten
+        fillOpacity = 0.9,
+        stroke = TRUE,
+        popup = ~paste0(
+          "<strong>", if("County" %in% names(data)) County else "Kabupaten/Kota", "</strong><br>",
+          "Cluster: ", Cluster, "<br>",
+          if("SOVI_Score" %in% names(data)) paste0("SOVI Score: ", round(SOVI_Score, 3), "<br>") else "",
+          if("POPULATION" %in% names(data)) paste0("Populasi: ", format(POPULATION, big.mark = ","), " jiwa<br>") else "",
+          if("NOSEWER" %in% names(data)) paste0("No Sewer: ", round(NOSEWER, 1), "%<br>") else "",
+          if("TAPWATER" %in% names(data)) paste0("Tap Water: ", round(TAPWATER, 1), "%") else ""
+        ),
+        label = ~paste("Cluster", Cluster, "-", if("County" %in% names(data)) County else "Area"),
+        labelOptions = labelOptions(
+          style = list("font-weight" = "normal", padding = "3px 8px"),
+          textsize = "12px",
+          direction = "auto"
+        )
       ) %>%
-      addLegend("bottomright", pal = pal, values = ~Cluster,
-                title = "Cluster", opacity = 1)
+      addLegend(
+        "bottomright", 
+        pal = pal, 
+        values = ~Cluster,
+        title = "Cluster",
+        opacity = 1,
+        labFormat = labelFormat(prefix = "Cluster ")
+      )
   })
   
   output$cluster_table <- DT::renderDataTable({
