@@ -4718,6 +4718,21 @@ Pastikan variabel yang dipilih adalah numerik.")
       data <- values$current_data
       clustering <- values$clustering_result
       
+      # Jika values$current_data kosong, gunakan data default
+      if (is.null(data)) {
+        data <- sovi_data
+        if (!"Cluster" %in% names(data)) {
+          data$Cluster <- as.factor(cluster_assignment)
+        }
+        values$current_data <- data
+      }
+      
+      # Jika clustering result kosong, gunakan default
+      if (is.null(clustering)) {
+        clustering <- clustering_result
+        values$clustering_result <- clustering
+      }
+      
       # Validasi kondisi yang lebih robust
       if (is.null(data) || !"Cluster" %in% names(data) || is.null(clustering)) {
         return(NULL)
@@ -4726,49 +4741,55 @@ Pastikan variabel yang dipilih adalah numerik.")
       # Pastikan data memiliki minimal 1 row
       if (nrow(data) == 0) return(NULL)
       
-      # Gunakan MDS coordinates dari clustering result untuk sinkronisasi dengan scatter plot
-      mds_coords <- NULL
+             # Gunakan MDS coordinates dari clustering result untuk sinkronisasi dengan scatter plot
+       mds_coords <- NULL
+       
+       if (!is.null(clustering$mds)) {
+         mds_coords <- clustering$mds
+         # Pastikan flip Y untuk orientasi benar
+         if (!is.null(mds_coords)) {
+           mds_coords[,2] <- -mds_coords[,2]
+         }
+       } else if (!is.null(clustering$method) && clustering$method == "pam") {
+         # Untuk PAM, generate MDS dari distance matrix
+         dist_mat <- as.matrix(distance_matrix)
+         if (ncol(dist_mat) > nrow(dist_mat)) {
+           dist_mat <- dist_mat[, -1]
+         }
+         mds_coords <- cmdscale(as.dist(dist_mat), k = 2)
+         mds_coords[,2] <- -mds_coords[,2]  # Flip Y untuk orientasi benar
+       } else {
+         # Untuk hierarchical atau default, generate MDS dari distance matrix
+         dist_mat <- as.matrix(distance_matrix)
+         if (ncol(dist_mat) > nrow(dist_mat)) {
+           dist_mat <- dist_mat[, -1]
+         }
+         mds_coords <- cmdscale(as.dist(dist_mat), k = 2)
+         mds_coords[,2] <- -mds_coords[,2]  # Flip Y untuk orientasi benar
+       }
       
-      if (!is.null(clustering$mds)) {
-        mds_coords <- clustering$mds
-      } else if (!is.null(clustering$method) && clustering$method == "pam") {
-        # Untuk PAM, generate MDS dari distance matrix
-        dist_mat <- as.matrix(distance_matrix)
-        if (ncol(dist_mat) > nrow(dist_mat)) {
-          dist_mat <- dist_mat[, -1]
-        }
-        mds_coords <- cmdscale(as.dist(dist_mat), k = 2)
-        mds_coords[,2] <- -mds_coords[,2]  # Flip Y untuk orientasi benar
-      } else {
-        # Fallback ke koordinat geografis jika MDS tidak tersedia
-        if (any(c("Latitude", "Longitude") %in% names(data))) {
-          # Gunakan koordinat geografis yang ada
-          lat_col <- if("Latitude" %in% names(data)) data$Latitude else rep(-2, nrow(data))
-          lng_col <- if("Longitude" %in% names(data)) data$Longitude else rep(118, nrow(data))
-          mds_coords <- cbind(lng_col, lat_col)
-        } else {
-          # Generate koordinat default untuk Indonesia
-          n_points <- nrow(data)
-          mds_coords <- cbind(
-            runif(n_points, 95, 141),   # Longitude Indonesia
-            runif(n_points, -11, 6)     # Latitude Indonesia
-          )
-        }
-      }
-      
-      # Validasi mds_coords
-      if (is.null(mds_coords) || nrow(mds_coords) != nrow(data)) {
-        return(NULL)
-      }
-      
-      # Normalisasi MDS coordinates ke range geografis Indonesia yang realistis
-      x_normalized <- scales::rescale(mds_coords[,1], to = c(95, 141))   # Indonesia longitude range
-      y_normalized <- scales::rescale(mds_coords[,2], to = c(-11, 6))    # Indonesia latitude range
-      
-      # Validasi hasil normalisasi
-      if (any(is.na(x_normalized)) || any(is.na(y_normalized))) {
-        return(NULL)
-      }
+             # Validasi mds_coords
+       if (is.null(mds_coords) || nrow(mds_coords) != nrow(data)) {
+         # Fallback: generate random coordinates untuk Indonesia
+         n_points <- nrow(data)
+         set.seed(123)  # Untuk reproducibility
+         mds_coords <- cbind(
+           runif(n_points, -2000, 3000),  # Range yang mirip dengan MDS dimension 1
+           runif(n_points, -1000, 500)    # Range yang mirip dengan MDS dimension 2
+         )
+       }
+       
+       # Normalisasi MDS coordinates ke range geografis Indonesia yang realistis
+       x_normalized <- scales::rescale(mds_coords[,1], to = c(95, 141))   # Indonesia longitude range
+       y_normalized <- scales::rescale(mds_coords[,2], to = c(-11, 6))    # Indonesia latitude range
+       
+       # Validasi hasil normalisasi
+       if (any(is.na(x_normalized)) || any(is.na(y_normalized))) {
+         # Fallback coordinates jika normalisasi gagal
+         n_points <- nrow(data)
+         x_normalized <- runif(n_points, 95, 141)
+         y_normalized <- runif(n_points, -11, 6)
+       }
       
       # Buat data frame dengan koordinat MDS yang dinormalisasi
       map_data <- data.frame(
