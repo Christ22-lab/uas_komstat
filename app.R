@@ -1667,66 +1667,153 @@ ui <- dashboardPage(
       # =================== METADATA ===================
       tabItem(tabName = "metadata",
               fluidRow(
-                box(width = 12, title = "Metadata Dataset SOVI", status = "primary", solidHeader = TRUE,
+                box(width = 12, title = "Metadata dan Dokumentasi Dataset", status = "primary", solidHeader = TRUE,
                     div(class = "fade-in",
-                        h3("Social Vulnerability Index (SOVI) Dataset", class = "text-gradient"),
+                        h3("Dokumentasi Dataset Social Vulnerability Index (SOVI) dan Distance Matrix", class = "text-gradient"),
                         
-                        h4("Sumber Data"),
-                        tags$ul(
-                          tags$li(strong("Artikel:"), tags$a(href = metadata_url, "A county-level dataset for informing the United States social vulnerability to environmental hazards", target = "_blank")),
-                          tags$li(strong("Journal:"), "Scientific Data - Nature"),
-                          tags$li(strong("DOI:"), "10.1038/s41597-021-01080-w"),
-                          tags$li(strong("Tahun Publikasi:"), "2021")
-                        ),
-                        
-                        h4("Deskripsi Dataset"),
-                        p("Dataset Social Vulnerability Index (SOVI) menyediakan data tingkat county di Amerika Serikat yang mengukur kerentanan sosial terhadap bahaya lingkungan. Dataset ini dikembangkan untuk membantu dalam perencanaan mitigasi bencana dan manajemen risiko."),
-                        
-                        h4("Struktur Data"),
-                        tags$div(class = "info-box",
+                        # Dataset 1: SOVI
+                        h4("📊 Dataset 1: Social Vulnerability Index (SOVI)", style = "color: #667eea; margin-top: 20px;"),
+                        tags$div(class = "info-box", style = "border-left: 4px solid #667eea; background: linear-gradient(135deg, #f8faff 0%, #e8f2ff 100%);",
+                                 h5("Sumber Data"),
                                  tags$ul(
-                                   tags$li(strong("Unit Analisis:"), " County-level (tingkat kabupaten)"),
-                                   tags$li(strong("Cakupan Geografis:"), " Amerika Serikat"),
-                                   tags$li(strong("Jumlah Variabel:"), " 30+ indikator sosial-ekonomi"),
-                                   tags$li(strong("Format:"), " CSV (Comma Separated Values)")
-                                 )
-                        ),
-                        
-                        h4("Variabel Utama"),
-                        DT::dataTableOutput("metadata_variables"),
-                        
-                        br(),
-                        h4("Metodologi SOVI"),
-                        tags$div(class = "info-box", style = "border-left-color: var(--warning-color); background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);",
-                                 p("Social Vulnerability Index (SOVI) dikembangkan menggunakan Principal Component Analysis (PCA) untuk mengintegrasikan multiple indikator sosial-ekonomi menjadi satu indeks komposit. Indeks ini mengidentifikasi area dengan tingkat kerentanan sosial tinggi yang membutuhkan perhatian khusus dalam perencanaan mitigasi bencana."),
+                                   tags$li(strong("URL Data:"), tags$a(href = sovi_url, "https://raw.githubusercontent.com/bmlmcmc/naspaclust/main/data/sovi_data.csv", target = "_blank")),
+                                   tags$li(strong("Metadata Referensi:"), tags$a(href = metadata_url, "ScienceDirect - Social vulnerability data article", target = "_blank")),
+                                   tags$li(strong("DOI:"), tags$a(href = "https://doi.org/10.1016/j.dib.2021.107618", "10.1016/j.dib.2021.107618", target = "_blank")),
+                                   tags$li(strong("Journal:"), "Data in Brief - Elsevier"),
+                                   tags$li(strong("Tahun:"), "2021")
+                                 ),
                                  
-                                 h5("Komponen Utama SOVI:"),
+                                 h5("Deskripsi"),
+                                 p("Dataset ini berisi indikator kerentanan sosial yang dikembangkan dalam konteks penelitian COVID-19. Data mengukur berbagai dimensi kerentanan sosial komunitas terhadap bencana dan gangguan eksternal, termasuk pandemi."),
+                                 
+                                 h5("Variabel Utama"),
                                  tags$ul(
-                                   tags$li("Demographics (demografi)"),
-                                   tags$li("Socioeconomic Status (status sosial-ekonomi)"),
-                                   tags$li("Housing and Transportation (perumahan dan transportasi)"),
-                                   tags$li("Community and Environment (komunitas dan lingkungan)")
+                                   tags$li(strong("Population:"), " Jumlah populasi per area"),
+                                   tags$li(strong("Income:"), " Pendapatan per kapita"),
+                                   tags$li(strong("Education:"), " Tingkat pendidikan (% lulusan SMA+)"),
+                                   tags$li(strong("Age_65_Over:"), " Persentase populasi lansia (≥65 tahun)"),
+                                   tags$li(strong("Disability:"), " Persentase populasi dengan disabilitas"),
+                                   tags$li(strong("SOVI_Score:"), " Skor kerentanan sosial (standardized)"),
+                                   tags$li(strong("Coordinates:"), " Latitude dan Longitude")
                                  )
                         ),
                         
-                        h4("Aplikasi dan Kegunaan"),
-                        tags$div(class = "info-box", style = "border-left-color: var(--info-color); background: linear-gradient(135deg, #e6f7ff 0%, #f0f9ff 100%);",
+                        # Dataset 2: Distance Matrix
+                        h4("📏 Dataset 2: Distance Matrix", style = "color: #764ba2; margin-top: 30px;"),
+                        tags$div(class = "info-box", style = "border-left: 4px solid #764ba2; background: linear-gradient(135deg, #faf8ff 0%, #f3f0ff 100%);",
+                                 h5("Sumber Data"),
                                  tags$ul(
-                                   tags$li("Perencanaan mitigasi bencana"),
-                                   tags$li("Alokasi sumber daya emergency management"),
-                                   tags$li("Identifikasi komunitas berisiko tinggi"),
-                                   tags$li("Penelitian kerentanan sosial"),
-                                   tags$li("Analisis disparitas sosial-ekonomi")
+                                   tags$li(strong("URL Data:"), tags$a(href = distance_url, "https://raw.githubusercontent.com/bmlmcmc/naspaclust/main/data/distance.csv", target = "_blank")),
+                                   tags$li(strong("Repository:"), tags$a(href = "https://github.com/bmlmcmc/naspaclust", "GitHub - naspaclust", target = "_blank")),
+                                   tags$li(strong("Package:"), "naspaclust - Spatial Clustering Analysis")
+                                 ),
+                                 
+                                 h5("Deskripsi"),
+                                 p("Matriks jarak yang menyediakan informasi dissimilarity atau jarak spasial antar observasi dalam dataset SOVI. Digunakan untuk analisis clustering spasial dan identifikasi pola geografis kerentanan sosial."),
+                                 
+                                 h5("Struktur"),
+                                 tags$ul(
+                                   tags$li(strong("Format:"), " Matriks simetrik n×n"),
+                                   tags$li(strong("Diagonal:"), " Nilai 0 (jarak dari titik ke dirinya sendiri)"),
+                                   tags$li(strong("Off-diagonal:"), " Nilai jarak/dissimilarity antar titik"),
+                                   tags$li(strong("Unit:"), " Jarak euclidean atau metric lainnya")
                                  )
                         ),
                         
-                        h4("Sitasi"),
-                        tags$div(class = "info-box", style = "background: var(--gray-50); border-left-color: var(--gray-400); font-family: 'JetBrains Mono', monospace;",
-                                 p("Flanagan, B.E., Hallisey, E.J., Adams, E. et al. A county-level dataset for informing the United States social vulnerability to environmental hazards. Sci Data 8, 290 (2021). https://doi.org/10.1038/s41597-021-01080-w")
+                        # Hubungan antar data
+                        h4("🔗 Hubungan Antar Dataset", style = "color: #f093fb; margin-top: 30px;"),
+                        tags$div(class = "info-box", style = "border-left: 4px solid #f093fb; background: linear-gradient(135deg, #fffaff 0%, #fdf2ff 100%);",
+                                 h5("Integrasi Spatial-Social Analysis"),
+                                 p("Kedua dataset ini dirancang untuk digunakan bersama-sama dalam analisis spatio-social vulnerability:"),
+                                 tags$ul(
+                                   tags$li(strong("SOVI Data:"), " Menyediakan karakteristik sosial-ekonomi setiap area"),
+                                   tags$li(strong("Distance Matrix:"), " Menyediakan informasi kedekatan spasial antar area"),
+                                   tags$li(strong("Combined Analysis:"), " Memungkinkan clustering berdasarkan kerentanan sosial DAN kedekatan geografis")
+                                 ),
+                                 
+                                 h5("Aplikasi Terintegrasi"),
+                                 tags$ol(
+                                   tags$li("Spatial clustering of social vulnerability"),
+                                   tags$li("Hotspot analysis untuk area berisiko tinggi"),
+                                   tags$li("Regional policy planning berdasarkan cluster geografis"),
+                                   tags$li("Resource allocation untuk disaster preparedness"),
+                                   tags$li("Comparative analysis antar wilayah dengan karakteristik serupa")
+                                 )
+                        ),
+                        
+                        # Metodologi dan Analisis
+                        h4("🔬 Metodologi Analisis", style = "color: #48bb78; margin-top: 30px;"),
+                        tags$div(class = "info-box", style = "border-left: 4px solid #48bb78; background: linear-gradient(135deg, #f7fefc 0%, #edf7f0 100%);",
+                                 h5("Social Vulnerability Index (SOVI)"),
+                                 p("SOVI dikembangkan menggunakan pendekatan composite index yang mengintegrasikan multiple indikator:"),
+                                 tags$ul(
+                                   tags$li("Principal Component Analysis (PCA) untuk dimensi reduction"),
+                                   tags$li("Standardization menggunakan z-score"),
+                                   tags$li("Weighting berdasarkan variance explained"),
+                                   tags$li("Interpretasi: skor positif = lebih rentan, negatif = kurang rentan")
+                                 ),
+                                 
+                                 h5("Distance Matrix Analysis"),
+                                 tags$ul(
+                                   tags$li("Euclidean distance untuk continuous variables"),
+                                   tags$li("Gower distance untuk mixed data types"),
+                                   tags$li("Clustering algorithms: Hierarchical, K-means, DBSCAN, PAM"),
+                                   tags$li("Validation menggunakan silhouette analysis")
+                                 )
+                        ),
+                        
+                        # Sitasi dan Referensi
+                        h4("📚 Sitasi dan Referensi", style = "color: #ed8936; margin-top: 30px;"),
+                        tags$div(class = "info-box", style = "background: var(--gray-50); border-left: 4px solid #ed8936; font-family: 'JetBrains Mono', monospace; font-size: 12px;",
+                                 h5("Primary Reference"),
+                                 p(strong("Social Vulnerability Data Article:")),
+                                 p("Data in Brief, Volume 39, December 2021, 107618"),
+                                 p("DOI: ", tags$a(href = "https://doi.org/10.1016/j.dib.2021.107618", "10.1016/j.dib.2021.107618", target = "_blank")),
+                                 
+                                 h5("Data Sources"),
+                                 p(strong("SOVI Dataset:")),
+                                 p(tags$a(href = sovi_url, sovi_url, target = "_blank")),
+                                 p(strong("Distance Matrix:")),
+                                 p(tags$a(href = distance_url, distance_url, target = "_blank")),
+                                 
+                                 h5("Related Links"),
+                                 tags$ul(
+                                   tags$li(tags$a(href = "https://github.com/bmlmcmc/naspaclust", "GitHub Repository - naspaclust", target = "_blank")),
+                                   tags$li(tags$a(href = "https://www.sciencedirect.com/journal/data-in-brief", "Data in Brief Journal", target = "_blank")),
+                                   tags$li(tags$a(href = "https://www.elsevier.com/", "Elsevier Publisher", target = "_blank"))
+                                 )
+                        ),
+                        
+                        # Cara Penggunaan Dashboard
+                        h4("💡 Panduan Penggunaan Dashboard", style = "color: #4299e1; margin-top: 30px;"),
+                        tags$div(class = "info-box", style = "border-left: 4px solid #4299e1; background: linear-gradient(135deg, #f7fafc 0%, #e2e8f0 100%);",
+                                 h5("Langkah-langkah Analisis"),
+                                 tags$ol(
+                                   tags$li(strong("Data Management:"), " Load data default atau upload data custom"),
+                                   tags$li(strong("Eksplorasi:"), " Gunakan statistik deskriptif dan visualisasi untuk memahami data"),
+                                   tags$li(strong("Uji Asumsi:"), " Periksa normalitas dan homogenitas sebelum analisis inferensia"),
+                                   tags$li(strong("Analisis Inferensia:"), " Lakukan uji t, ANOVA, atau uji lainnya sesuai kebutuhan"),
+                                   tags$li(strong("Clustering:"), " Analisis pengelompokan menggunakan distance matrix"),
+                                   tags$li(strong("Mapping:"), " Visualisasi hasil pada peta interaktif"),
+                                   tags$li(strong("Interpretasi:"), " Gunakan output interpretasi untuk menarik kesimpulan")
+                                 ),
+                                 
+                                 h5("Tips Penggunaan"),
+                                 tags$ul(
+                                   tags$li("Selalu periksa missing values sebelum analisis"),
+                                   tags$li("Gunakan transformasi data jika diperlukan"),
+                                   tags$li("Perhatikan skala pengukuran variabel"),
+                                   tags$li("Validasi hasil clustering dengan silhouette analysis"),
+                                   tags$li("Kombinasikan multiple analisis untuk insight yang komprehensif")
+                                 )
                         ),
                         
                         br(),
-                        downloadButton("download_metadata_report", "Download Metadata Lengkap (Word)", class = "btn-primary")
+                        div(style = "text-align: center; margin-top: 30px;",
+                            downloadButton("download_metadata_report", "📄 Download Metadata Lengkap (Word)", class = "btn-primary"),
+                            tags$span(style = "margin: 0 10px;"),
+                            actionButton("refresh_data", "🔄 Refresh Data", class = "btn-info")
+                        )
                     )
                 )
               )
@@ -2362,7 +2449,7 @@ server <- function(input, output, session) {
         plots_list <- list()
         
         for (var in input$desc_variables) {
-          p <- ggplot(values$current_data, aes_string(x = var)) +
+          p <- ggplot(values$current_data, aes(x = .data[[var]])) +
             geom_histogram(bins = 30, alpha = 0.7, fill = "steelblue") +
             geom_density(aes(y = ..density.. * nrow(values$current_data) * diff(range(values$current_data[[var]], na.rm = TRUE))/30), 
                          color = "red", size = 1) +
@@ -2394,9 +2481,9 @@ server <- function(input, output, session) {
     tryCatch({
       if (input$plot_type == "scatter") {
         req(input$y_var)
-        p <- ggplot(values$current_data, aes_string(x = input$x_var, y = input$y_var))
+        p <- ggplot(values$current_data, aes(x = .data[[input$x_var]], y = .data[[input$y_var]]))
         if (input$color_var != "none") {
-          p <- p + aes_string(color = input$color_var) +
+          p <- p + aes(color = .data[[input$color_var]]) +
             scale_color_manual(values = color_palette) +
             geom_point(alpha = 0.6)
         } else {
@@ -2410,9 +2497,9 @@ server <- function(input, output, session) {
         req(input$y_var)
         if (input$x_var != "none" && is.factor(values$current_data[[input$x_var]]) || is.character(values$current_data[[input$x_var]])) {
           # Categorical x-variable for grouping
-          p <- ggplot(values$current_data, aes_string(x = input$x_var, y = input$y_var))
+          p <- ggplot(values$current_data, aes(x = .data[[input$x_var]], y = .data[[input$y_var]]))
           if (input$color_var != "none") {
-            p <- p + aes_string(fill = input$color_var) +
+            p <- p + aes(fill = .data[[input$color_var]]) +
               scale_fill_manual(values = color_palette) +
               geom_boxplot(alpha = 0.7, outlier.shape = 16, outlier.size = 2, 
                            linewidth = 1.2, width = 0.6)
@@ -2427,7 +2514,7 @@ server <- function(input, output, session) {
                   panel.grid.minor = element_blank())
         } else {
           # Single boxplot for numeric y-variable
-          p <- ggplot(values$current_data, aes_string(y = input$y_var)) +
+          p <- ggplot(values$current_data, aes(y = .data[[input$y_var]])) +
             geom_boxplot(fill = "#1f77b4", alpha = 0.7, outlier.shape = 16, 
                          outlier.size = 2, linewidth = 1.2, width = 0.6) +
             labs(title = paste("Box Plot:", input$y_var), x = "", y = input$y_var) +
@@ -2437,9 +2524,9 @@ server <- function(input, output, session) {
         }
         
       } else if (input$plot_type == "histogram") {
-        p <- ggplot(values$current_data, aes_string(x = input$x_var))
+        p <- ggplot(values$current_data, aes(x = .data[[input$x_var]]))
         if (input$color_var != "none") {
-          p <- p + aes_string(fill = input$color_var) +
+          p <- p + aes(fill = .data[[input$color_var]]) +
             scale_fill_manual(values = color_palette) +
             geom_histogram(bins = 30, alpha = 0.7)
         } else {
@@ -2449,38 +2536,68 @@ server <- function(input, output, session) {
           theme_minimal()
         
       } else if (input$plot_type == "barplot") {
-        # Fixed bar plot
+        # Fixed bar plot with better handling of categorical variables
         req(input$x_var)
         
-        # Create bar data with proper handling of missing values
-        bar_data <- values$current_data %>%
-          filter(!is.na(!!sym(input$x_var))) %>%
-          count(!!sym(input$x_var), name = "n")
+        # Convert to factor if character or if many unique values
+        var_data <- values$current_data[[input$x_var]]
         
-        p <- ggplot(bar_data, aes_string(x = input$x_var, y = "n"))
-        
-        if (input$color_var != "none" && input$color_var %in% names(values$current_data)) {
-          # Add color grouping
-          color_summary <- values$current_data %>%
-            filter(!is.na(!!sym(input$x_var)), !is.na(!!sym(input$color_var))) %>%
-            count(!!sym(input$x_var), !!sym(input$color_var), name = "n")
+        # Determine if variable should be treated as categorical
+        if (is.character(var_data) || (is.numeric(var_data) && length(unique(var_data[!is.na(var_data)])) <= 20)) {
+          # Convert to factor for better display
+          if (is.numeric(var_data)) {
+            var_data <- factor(var_data, levels = sort(unique(var_data[!is.na(var_data)])))
+          } else {
+            var_data <- factor(var_data)
+          }
           
-          p <- ggplot(color_summary, aes_string(x = input$x_var, y = "n", fill = input$color_var)) +
-            scale_fill_manual(values = color_palette) +
-            geom_bar(stat = "identity", alpha = 0.7, position = "stack")
+          # Create temporary data with factor
+          temp_data <- values$current_data
+          temp_data[[input$x_var]] <- var_data
+          
+          # Create bar data with proper handling of missing values
+          bar_data <- temp_data %>%
+            filter(!is.na(!!sym(input$x_var))) %>%
+            count(!!sym(input$x_var), name = "n")
+          
+          p <- ggplot(bar_data, aes(x = .data[[input$x_var]], y = n))
+          
+          if (input$color_var != "none" && input$color_var %in% names(values$current_data)) {
+            # Add color grouping
+            color_summary <- temp_data %>%
+              filter(!is.na(!!sym(input$x_var)), !is.na(!!sym(input$color_var))) %>%
+              count(!!sym(input$x_var), !!sym(input$color_var), name = "n")
+            
+            p <- ggplot(color_summary, aes(x = .data[[input$x_var]], y = n, fill = .data[[input$color_var]])) +
+              scale_fill_manual(values = color_palette) +
+              geom_bar(stat = "identity", alpha = 0.7, position = "stack")
+          } else {
+            p <- p + geom_bar(stat = "identity", alpha = 0.7, fill = "#1f77b4")
+          }
+          
+          # Improve axis labels
+          unique_vals <- length(unique(bar_data[[input$x_var]]))
+          angle_text <- if (unique_vals > 5) 45 else 0
+          
+          p <- p + labs(title = paste("Bar Chart:", input$x_var), y = "Count") +
+            theme_minimal() +
+            theme(axis.text.x = element_text(angle = angle_text, hjust = if(angle_text > 0) 1 else 0.5),
+                  panel.grid.major.x = element_blank())
         } else {
-          p <- p + geom_bar(stat = "identity", alpha = 0.7, fill = "#1f77b4")
+          # For truly continuous variables, show a message
+          p <- ggplot() + 
+            geom_text(aes(x = 0.5, y = 0.5, label = "Variable terlalu banyak kategori untuk bar chart.\nGunakan histogram sebagai gantinya."), 
+                      size = 5, color = "red") +
+            xlim(0, 1) + ylim(0, 1) +
+            theme_void() +
+            labs(title = paste("Bar Chart: Tidak dapat menampilkan", input$x_var))
         }
-        
-        p <- p + labs(title = paste("Bar Chart:", input$x_var), y = "Count") +
-          theme_minimal() +
-          theme(axis.text.x = element_text(angle = 45, hjust = 1))
         
       } else if (input$plot_type == "density") {
         # Fixed density plot
-        p <- ggplot(values$current_data, aes_string(x = input$x_var))
+        p <- ggplot(values$current_data, aes(x = .data[[input$x_var]]))
         if (input$color_var != "none") {
-          p <- p + aes_string(fill = input$color_var, color = input$color_var) +
+          p <- p + aes(fill = .data[[input$color_var]], color = .data[[input$color_var]]) +
             scale_fill_manual(values = color_palette) +
             scale_color_manual(values = color_palette) +
             geom_density(alpha = 0.5)
@@ -3700,8 +3817,8 @@ server <- function(input, output, session) {
       output$anova_plots <- renderPlotly({
         tryCatch({
           if (exists("anova_model") && input$anova_type == "oneway") {
-            p1 <- ggplot(anova_data, aes_string(x = input$anova_factor1, y = input$anova_dependent)) +
-              geom_boxplot(aes_string(fill = input$anova_factor1), alpha = 0.7, 
+            p1 <- ggplot(anova_data, aes(x = .data[[input$anova_factor1]], y = .data[[input$anova_dependent]])) +
+              geom_boxplot(aes(fill = .data[[input$anova_factor1]]), alpha = 0.7, 
                            outlier.shape = 16, outlier.size = 2, size = 1.2, width = 0.6) +
               geom_jitter(width = 0.2, alpha = 0.5, size = 1) +
               labs(title = "Perbandingan Kelompok (Box Plot)", 
@@ -3727,8 +3844,8 @@ server <- function(input, output, session) {
             subplot(ggplotly(p1), ggplotly(p2), nrows = 1, 
                     subplot_titles = c("Group Comparisons", "Residual Analysis"))
           } else if (exists("anova_model") && input$anova_type == "twoway") {
-            p <- ggplot(anova_data, aes_string(x = input$anova_factor1, y = input$anova_dependent, 
-                                               fill = input$anova_factor2)) +
+            p <- ggplot(anova_data, aes(x = .data[[input$anova_factor1]], y = .data[[input$anova_dependent]], 
+                                               fill = .data[[input$anova_factor2]])) +
               geom_boxplot(alpha = 0.7) +
               labs(title = "Two-Way ANOVA Visualization", 
                    x = input$anova_factor1, y = input$anova_dependent,
@@ -3738,7 +3855,7 @@ server <- function(input, output, session) {
             ggplotly(p)
           } else {
             # Fallback plot if model doesn't exist
-            p <- ggplot(anova_data, aes_string(x = input$anova_factor1, y = input$anova_dependent)) +
+            p <- ggplot(anova_data, aes(x = .data[[input$anova_factor1]], y = .data[[input$anova_dependent]])) +
               geom_boxplot(alpha = 0.7, fill = "lightblue") +
               labs(title = "Data Overview", 
                    x = input$anova_factor1, y = input$anova_dependent) +
@@ -4718,7 +4835,27 @@ Pastikan variabel yang dipilih adalah numerik.")
   # Pastikan data SOVI selalu punya kolom Cluster
   observe({
     if (!"Cluster" %in% names(values$current_data)) {
-      values$current_data$Cluster <- as.factor(cluster_assignment)
+      # Only add cluster assignment if data size matches
+      if (nrow(values$current_data) == length(cluster_assignment)) {
+        values$current_data$Cluster <- as.factor(cluster_assignment)
+      } else {
+        # For custom data, create dummy clusters based on a numeric variable or random assignment
+        if (any(sapply(values$current_data, is.numeric))) {
+          # Use k-means clustering if there are numeric variables
+          numeric_cols <- sapply(values$current_data, is.numeric)
+          if (sum(numeric_cols) > 0) {
+            # Select first numeric column for simple clustering
+            first_numeric <- names(values$current_data)[numeric_cols][1]
+            # Create 3 clusters based on quantiles
+            values$current_data$Cluster <- as.factor(cut(values$current_data[[first_numeric]], 
+                                                         breaks = 3, 
+                                                         labels = c("Low", "Medium", "High")))
+          }
+        } else {
+          # Random assignment if no numeric variables
+          values$current_data$Cluster <- as.factor(sample(1:3, nrow(values$current_data), replace = TRUE))
+        }
+      }
     }
   })
   
