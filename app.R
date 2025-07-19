@@ -73,14 +73,14 @@ load_data <- function() {
 
 # Load data at startup
 data_list <- load_data()
-original_data <- data_list$sovi
+sovi_data <- data_list$sovi
 distance_matrix <- data_list$distance
 
-# Tambahkan koordinat Indonesia ke original_data
-if (!"Latitude" %in% names(original_data) || !"Longitude" %in% names(original_data)) {
-  n_points <- nrow(original_data)
-  original_data$Latitude <- runif(n_points, -11, 6)   # Indonesia latitude range: 6°N to 11°S
-  original_data$Longitude <- runif(n_points, 95, 141) # Indonesia longitude range: 95°E to 141°E
+# Tambahkan koordinat Indonesia ke sovi_data jika belum ada
+if (!"Latitude" %in% names(sovi_data) || !"Longitude" %in% names(sovi_data)) {
+  n_points <- nrow(sovi_data)
+  sovi_data$Latitude <- runif(n_points, -11, 6)   # Indonesia latitude range: 6°N to 11°S
+  sovi_data$Longitude <- runif(n_points, 95, 141) # Indonesia longitude range: 95°E to 141°E
 }
 
 # =================== CLUSTERING ANALYSIS (DISTANCE) ===================
@@ -204,15 +204,8 @@ create_interpretation <- function(test_result, test_type) {
   return("Interpretasi tidak tersedia untuk jenis uji ini.")
 }
 
-# Set original_data sama dengan sovi_data yang sudah memiliki cluster
+# Set original_data sama dengan sovi_data yang sudah memiliki cluster dan coordinates
 original_data <- sovi_data
-
-# Tambahkan koordinat untuk pemetaan (contoh koordinat AS)
-if(!"Latitude" %in% names(original_data)) {
-  set.seed(123)
-  original_data$Latitude <- runif(nrow(original_data), 25, 49)
-  original_data$Longitude <- runif(nrow(original_data), -125, -65)
-}
 
 # UI
 ui <- dashboardPage(
