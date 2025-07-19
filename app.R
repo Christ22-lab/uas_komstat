@@ -4691,8 +4691,8 @@ Pastikan variabel yang dipilih adalah numerik.")
       } else if (clustering$method %in% c("kmeans", "dbscan")) {
         mds_result <- clustering$mds
         
-        # Balik sumbu Y untuk orientasi yang benar (Indonesia tidak terbalik)
-        mds_result[,2] <- -mds_result[,2]
+        # MDS dari do_clustering sudah di-flip, jadi tidak perlu flip lagi
+        # mds_result[,2] <- -mds_result[,2]  # REMOVE: double flip
         
         plot(mds_result, col = rainbow(max(clustering$cluster))[clustering$cluster], 
              pch = 16, cex = 1.2,
@@ -4746,10 +4746,10 @@ Pastikan variabel yang dipilih adalah numerik.")
        
        if (!is.null(clustering$mds)) {
          mds_coords <- clustering$mds
-         # Pastikan flip Y untuk orientasi benar
-         if (!is.null(mds_coords)) {
-           mds_coords[,2] <- -mds_coords[,2]
-         }
+         # MDS dari do_clustering untuk K-means/DBSCAN sudah di-flip, jadi tidak perlu flip lagi
+         # if (!is.null(mds_coords)) {
+         #   mds_coords[,2] <- -mds_coords[,2]
+         # }
        } else if (!is.null(clustering$method) && clustering$method == "pam") {
          # Untuk PAM, generate MDS dari distance matrix
          dist_mat <- as.matrix(distance_matrix)
