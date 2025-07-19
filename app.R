@@ -1672,7 +1672,7 @@ ui <- dashboardPage(
                         h3("Dokumentasi Dataset Social Vulnerability Index (SOVI) dan Distance Matrix", class = "text-gradient"),
                         
                         # Dataset 1: SOVI
-                        h4("📊 Dataset 1: Social Vulnerability Index (SOVI)", style = "color: #667eea; margin-top: 20px;"),
+                        h4("Dataset 1: Social Vulnerability Index (SOVI)", style = "color: #667eea; margin-top: 20px;"),
                         tags$div(class = "info-box", style = "border-left: 4px solid #667eea; background: linear-gradient(135deg, #f8faff 0%, #e8f2ff 100%);",
                                  h5("Sumber Data"),
                                  tags$ul(
@@ -1686,20 +1686,67 @@ ui <- dashboardPage(
                                  h5("Deskripsi"),
                                  p("Dataset ini berisi indikator kerentanan sosial yang dikembangkan dalam konteks penelitian COVID-19. Data mengukur berbagai dimensi kerentanan sosial komunitas terhadap bencana dan gangguan eksternal, termasuk pandemi."),
                                  
-                                 h5("Variabel Utama"),
-                                 tags$ul(
-                                   tags$li(strong("Population:"), " Jumlah populasi per area"),
-                                   tags$li(strong("Income:"), " Pendapatan per kapita"),
-                                   tags$li(strong("Education:"), " Tingkat pendidikan (% lulusan SMA+)"),
-                                   tags$li(strong("Age_65_Over:"), " Persentase populasi lansia (≥65 tahun)"),
-                                   tags$li(strong("Disability:"), " Persentase populasi dengan disabilitas"),
-                                   tags$li(strong("SOVI_Score:"), " Skor kerentanan sosial (standardized)"),
-                                   tags$li(strong("Coordinates:"), " Latitude dan Longitude")
+                                 h5("Variabel dalam Dataset (511 Kabupaten/Kota Indonesia)"),
+                                 div(class = "variable-table",
+                                   tags$table(class = "table table-striped table-bordered", style = "font-size: 12px;",
+                                     tags$thead(
+                                       tags$tr(
+                                         tags$th("Nama Variabel"),
+                                         tags$th("Definisi"),
+                                         tags$th("Tipe Data"),
+                                         tags$th("Satuan/Range")
+                                       )
+                                     ),
+                                     tags$tbody(
+                                       tags$tr(
+                                         tags$td(strong("NOSEWER")),
+                                         tags$td("Persentase rumah tangga tanpa akses sistem pembuangan limbah"),
+                                         tags$td("Numerik (kontinyu)"),
+                                         tags$td("0-100%")
+                                       ),
+                                       tags$tr(
+                                         tags$td(strong("TAPWATER")),
+                                         tags$td("Persentase rumah tangga dengan akses air bersih/ledeng"),
+                                         tags$td("Numerik (kontinyu)"),
+                                         tags$td("0-100%")
+                                       ),
+                                       tags$tr(
+                                         tags$td(strong("POPULATION")),
+                                         tags$td("Jumlah total populasi penduduk kabupaten/kota"),
+                                         tags$td("Numerik (diskrit)"),
+                                         tags$td("Jiwa (integer)")
+                                       ),
+                                       tags$tr(
+                                         tags$td(strong("Latitude")),
+                                         tags$td("Koordinat lintang geografis pusat kabupaten/kota"),
+                                         tags$td("Numerik (kontinyu)"),
+                                         tags$td("Derajat (-11° hingga 6°)")
+                                       ),
+                                       tags$tr(
+                                         tags$td(strong("Longitude")),
+                                         tags$td("Koordinat bujur geografis pusat kabupaten/kota"),
+                                         tags$td("Numerik (kontinyu)"),
+                                         tags$td("Derajat (95° hingga 141°)")
+                                       ),
+                                       tags$tr(
+                                         tags$td(strong("County")),
+                                         tags$td("Nama kabupaten/kota (identifier geografis)"),
+                                         tags$td("Karakter/Teks"),
+                                         tags$td("String (nama wilayah)")
+                                       ),
+                                       tags$tr(
+                                         tags$td(strong("SOVI_Score")),
+                                         tags$td("Skor indeks kerentanan sosial (composite index)"),
+                                         tags$td("Numerik (kontinyu)"),
+                                         tags$td("Nilai terstandarisasi")
+                                       )
+                                     )
+                                   )
                                  )
                         ),
                         
                         # Dataset 2: Distance Matrix
-                        h4("📏 Dataset 2: Distance Matrix", style = "color: #764ba2; margin-top: 30px;"),
+                        h4("Dataset 2: Distance Matrix", style = "color: #764ba2; margin-top: 30px;"),
                         tags$div(class = "info-box", style = "border-left: 4px solid #764ba2; background: linear-gradient(135deg, #faf8ff 0%, #f3f0ff 100%);",
                                  h5("Sumber Data"),
                                  tags$ul(
@@ -1709,40 +1756,139 @@ ui <- dashboardPage(
                                  ),
                                  
                                  h5("Deskripsi"),
-                                 p("Matriks jarak yang menyediakan informasi dissimilarity atau jarak spasial antar observasi dalam dataset SOVI. Digunakan untuk analisis clustering spasial dan identifikasi pola geografis kerentanan sosial."),
+                                 p("Matriks jarak multidimensional 511×511 yang menunjukkan tingkat similaritas/perbedaan karakteristik antar kabupaten/kota berdasarkan variabel sosio-ekonomi dan demografi. Matriks ini digunakan sebagai basis untuk analisis clustering dan visualisasi MDS yang menghasilkan proyeksi menyerupai peta Indonesia."),
                                  
-                                 h5("Struktur"),
-                                 tags$ul(
-                                   tags$li(strong("Format:"), " Matriks simetrik n×n"),
-                                   tags$li(strong("Diagonal:"), " Nilai 0 (jarak dari titik ke dirinya sendiri)"),
-                                   tags$li(strong("Off-diagonal:"), " Nilai jarak/dissimilarity antar titik"),
-                                   tags$li(strong("Unit:"), " Jarak euclidean atau metric lainnya")
+                                 h5("Spesifikasi Teknis Distance Matrix"),
+                                 div(class = "variable-table",
+                                   tags$table(class = "table table-striped table-bordered", style = "font-size: 12px;",
+                                     tags$thead(
+                                       tags$tr(
+                                         tags$th("Karakteristik"),
+                                         tags$th("Deskripsi"),
+                                         tags$th("Nilai/Spesifikasi")
+                                       )
+                                     ),
+                                     tags$tbody(
+                                       tags$tr(
+                                         tags$td(strong("Dimensi Matrix")),
+                                         tags$td("Ukuran matriks simetris untuk 511 kabupaten/kota"),
+                                         tags$td("511 × 511")
+                                       ),
+                                       tags$tr(
+                                         tags$td(strong("Tipe Data")),
+                                         tags$td("Nilai jarak numerik kontinyu"),
+                                         tags$td("Float/Double precision")
+                                       ),
+                                       tags$tr(
+                                         tags$td(strong("Range Nilai")),
+                                         tags$td("Rentang nilai jarak antar observasi"),
+                                         tags$td("0 hingga ~4000+ (unit: distance)")
+                                       ),
+                                       tags$tr(
+                                         tags$td(strong("Diagonal")),
+                                         tags$td("Jarak kabupaten dengan dirinya sendiri"),
+                                         tags$td("0 (identitas)")
+                                       ),
+                                       tags$tr(
+                                         tags$td(strong("Simetri")),
+                                         tags$td("Jarak A ke B = Jarak B ke A"),
+                                         tags$td("Matrix[i,j] = Matrix[j,i]")
+                                       ),
+                                       tags$tr(
+                                         tags$td(strong("Metode Perhitungan")),
+                                         tags$td("Algoritma pengukuran jarak multidimensional"),
+                                         tags$td("Euclidean Distance")
+                                       ),
+                                       tags$tr(
+                                         tags$td(strong("Interpretasi")),
+                                         tags$td("Makna nilai jarak"),
+                                         tags$td("Semakin kecil = semakin mirip karakteristik")
+                                       )
+                                     )
+                                   )
+                                 )
+                        ),
+                        
+                        # Penjelasan Visualisasi Clustering
+                        h4("Penjelasan Visualisasi Clustering dan Distance Matrix", style = "color: #e53e3e; margin-top: 30px;"),
+                        tags$div(class = "info-box", style = "border-left: 4px solid #e53e3e; background: linear-gradient(135deg, #fef5f5 0%, #fed7d7 100%);",
+                                 h5("Mengapa Visualisasi Clustering Menyerupai Peta Indonesia?"),
+                                 p("Visualisasi clustering dalam ruang 2D menggunakan MDS (Multidimensional Scaling) yang diterapkan pada distance matrix. Hasilnya terlihat seperti peta kepulauan Indonesia karena:"),
+                                 tags$ol(
+                                   tags$li(strong("Distance Matrix Basis:"), " Jarak dihitung berdasarkan karakteristik sosio-ekonomi yang umumnya berkorelasi dengan lokasi geografis"),
+                                   tags$li(strong("MDS Projection:"), " MDS memproyeksikan jarak multidimensional ke ruang 2D sambil mempertahankan struktur jarak relatif"),
+                                   tags$li(strong("Spatial Correlation:"), " Kabupaten yang berdekatan geografis cenderung memiliki karakteristik sosio-ekonomi yang mirip"),
+                                   tags$li(strong("Natural Clustering:"), " Pola geografis tercermin dalam data sosio-ekonomi sehingga cluster terbentuk secara spasial")
+                                 ),
+                                 
+                                 h5("Sumber Data untuk Komponen Visualisasi"),
+                                 div(class = "variable-table",
+                                   tags$table(class = "table table-striped table-bordered", style = "font-size: 12px;",
+                                     tags$thead(
+                                       tags$tr(
+                                         tags$th("Komponen Visualisasi"),
+                                         tags$th("Sumber Data"),
+                                         tags$th("Fungsi dan Penggunaan")
+                                       )
+                                     ),
+                                     tags$tbody(
+                                       tags$tr(
+                                         tags$td(strong("Scatter Plot MDS")),
+                                         tags$td("Distance Matrix (distance.csv)"),
+                                         tags$td("Proyeksi 2D hasil clustering yang menyerupai peta Indonesia")
+                                       ),
+                                       tags$tr(
+                                         tags$td(strong("Peta Interaktif")),
+                                         tags$td("Latitude & Longitude (sovi_data.csv)"),
+                                         tags$td("Koordinat geografis riil untuk mapping")
+                                       ),
+                                       tags$tr(
+                                         tags$td(strong("Cluster Assignment")),
+                                         tags$td("Distance Matrix + Algoritma Clustering"),
+                                         tags$td("Pengelompokan berdasarkan similarity karakteristik")
+                                       ),
+                                       tags$tr(
+                                         tags$td(strong("Marker Information")),
+                                         tags$td("SOVI Dataset (sovi_data.csv)"),
+                                         tags$td("Detail informasi kabupaten/kota dan variabel sosio-ekonomi")
+                                       )
+                                     )
+                                   )
+                                 ),
+                                 
+                                 h5("Alur Proses Visualisasi"),
+                                 tags$ol(
+                                   tags$li("Distance matrix 511×511 → berisi jarak karakteristik antar kabupaten"),
+                                   tags$li("Clustering algorithm → mengelompokkan berdasarkan distance matrix"),
+                                   tags$li("MDS (Multidimensional Scaling) → proyeksi ke ruang 2D"),
+                                   tags$li("Hasil MDS → visualisasi scatter plot menyerupai peta Indonesia"),
+                                   tags$li("Koordinat geografis riil → digunakan untuk peta interaktif terpisah")
                                  )
                         ),
                         
                         # Hubungan antar data
-                        h4("🔗 Hubungan Antar Dataset", style = "color: #f093fb; margin-top: 30px;"),
+                        h4("Hubungan Antar Dataset", style = "color: #f093fb; margin-top: 30px;"),
                         tags$div(class = "info-box", style = "border-left: 4px solid #f093fb; background: linear-gradient(135deg, #fffaff 0%, #fdf2ff 100%);",
                                  h5("Integrasi Spatial-Social Analysis"),
                                  p("Kedua dataset ini dirancang untuk digunakan bersama-sama dalam analisis spatio-social vulnerability:"),
                                  tags$ul(
-                                   tags$li(strong("SOVI Data:"), " Menyediakan karakteristik sosial-ekonomi setiap area"),
-                                   tags$li(strong("Distance Matrix:"), " Menyediakan informasi kedekatan spasial antar area"),
-                                   tags$li(strong("Combined Analysis:"), " Memungkinkan clustering berdasarkan kerentanan sosial DAN kedekatan geografis")
+                                   tags$li(strong("SOVI Data:"), " Menyediakan karakteristik sosial-ekonomi dan koordinat geografis riil setiap kabupaten/kota"),
+                                   tags$li(strong("Distance Matrix:"), " Menyediakan informasi similarity/dissimilarity karakteristik antar kabupaten untuk clustering"),
+                                   tags$li(strong("Combined Analysis:"), " Memungkinkan clustering berdasarkan karakteristik sosio-ekonomi yang secara natural mencerminkan pola geografis")
                                  ),
                                  
                                  h5("Aplikasi Terintegrasi"),
                                  tags$ol(
-                                   tags$li("Spatial clustering of social vulnerability"),
-                                   tags$li("Hotspot analysis untuk area berisiko tinggi"),
-                                   tags$li("Regional policy planning berdasarkan cluster geografis"),
-                                   tags$li("Resource allocation untuk disaster preparedness"),
+                                   tags$li("Spatial clustering berdasarkan karakteristik sosio-ekonomi"),
+                                   tags$li("Hotspot analysis untuk area dengan kerentanan sosial tinggi"),
+                                   tags$li("Regional policy planning berdasarkan cluster geografis dan karakteristik"),
+                                   tags$li("Resource allocation untuk disaster preparedness berbasis cluster"),
                                    tags$li("Comparative analysis antar wilayah dengan karakteristik serupa")
                                  )
                         ),
                         
                         # Metodologi dan Analisis
-                        h4("🔬 Metodologi Analisis", style = "color: #48bb78; margin-top: 30px;"),
+                        h4("Metodologi Analisis", style = "color: #48bb78; margin-top: 30px;"),
                         tags$div(class = "info-box", style = "border-left: 4px solid #48bb78; background: linear-gradient(135deg, #f7fefc 0%, #edf7f0 100%);",
                                  h5("Social Vulnerability Index (SOVI)"),
                                  p("SOVI dikembangkan menggunakan pendekatan composite index yang mengintegrasikan multiple indikator:"),
@@ -1763,7 +1909,7 @@ ui <- dashboardPage(
                         ),
                         
                         # Sitasi dan Referensi
-                        h4("📚 Sitasi dan Referensi", style = "color: #ed8936; margin-top: 30px;"),
+                        h4("Sitasi dan Referensi", style = "color: #ed8936; margin-top: 30px;"),
                         tags$div(class = "info-box", style = "background: var(--gray-50); border-left: 4px solid #ed8936; font-family: 'JetBrains Mono', monospace; font-size: 12px;",
                                  h5("Primary Reference"),
                                  p(strong("Social Vulnerability Data Article:")),
@@ -1785,7 +1931,7 @@ ui <- dashboardPage(
                         ),
                         
                         # Cara Penggunaan Dashboard
-                        h4("💡 Panduan Penggunaan Dashboard", style = "color: #4299e1; margin-top: 30px;"),
+                        h4("Panduan Penggunaan Dashboard", style = "color: #4299e1; margin-top: 30px;"),
                         tags$div(class = "info-box", style = "border-left: 4px solid #4299e1; background: linear-gradient(135deg, #f7fafc 0%, #e2e8f0 100%);",
                                  h5("Langkah-langkah Analisis"),
                                  tags$ol(
@@ -1810,9 +1956,9 @@ ui <- dashboardPage(
                         
                         br(),
                         div(style = "text-align: center; margin-top: 30px;",
-                            downloadButton("download_metadata_report", "📄 Download Metadata Lengkap (Word)", class = "btn-primary"),
+                            downloadButton("download_metadata_report", "Download Metadata Lengkap (Word)", class = "btn-primary"),
                             tags$span(style = "margin: 0 10px;"),
-                            actionButton("refresh_data", "🔄 Refresh Data", class = "btn-info")
+                            actionButton("refresh_data", "Refresh Data", class = "btn-info")
                         )
                     )
                 )
