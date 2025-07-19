@@ -4712,144 +4712,109 @@ Pastikan variabel yang dipilih adalah numerik.")
     }
   })
   
-  output$cluster_map <- renderLeaflet({
-    # Validasi data dengan tryCatch untuk error handling
+    output$cluster_map <- renderLeaflet({
     tryCatch({
+      # Ambil data clustering yang aktif
       data <- values$current_data
       clustering <- values$clustering_result
       
-      # Jika values$current_data kosong, gunakan data default
-      if (is.null(data)) {
+      # Fallback ke data default jika kosong
+      if (is.null(data) || !"Cluster" %in% names(data)) {
         data <- sovi_data
-        if (!"Cluster" %in% names(data)) {
-          data$Cluster <- as.factor(cluster_assignment)
-        }
-        values$current_data <- data
+        data$Cluster <- as.factor(cluster_assignment)
       }
       
-      # Jika clustering result kosong, gunakan default
       if (is.null(clustering)) {
         clustering <- clustering_result
-        values$clustering_result <- clustering
       }
       
-      # Validasi kondisi yang lebih robust
-      if (is.null(data) || !"Cluster" %in% names(data) || is.null(clustering)) {
-        return(NULL)
+      # Pastikan ada data untuk di-plot
+      if (nrow(data) == 0) {
+        return(leaflet() %>% addTiles() %>% setView(lng = 118, lat = -2, zoom = 5))
       }
       
-      # Pastikan data memiliki minimal 1 row
-      if (nrow(data) == 0) return(NULL)
+      # Ambil MDS coordinates dari clustering result
+      mds_coords <- NULL
       
-             # Gunakan MDS coordinates dari clustering result untuk sinkronisasi dengan scatter plot
-       mds_coords <- NULL
-       
-       if (!is.null(clustering$mds)) {
-         mds_coords <- clustering$mds
-         # MDS dari do_clustering untuk K-means/DBSCAN sudah di-flip, jadi tidak perlu flip lagi
-         # if (!is.null(mds_coords)) {
-         #   mds_coords[,2] <- -mds_coords[,2]
-         # }
-       } else if (!is.null(clustering$method) && clustering$method == "pam") {
-         # Untuk PAM, generate MDS dari distance matrix
-         dist_mat <- as.matrix(distance_matrix)
-         if (ncol(dist_mat) > nrow(dist_mat)) {
-           dist_mat <- dist_mat[, -1]
-         }
-         mds_coords <- cmdscale(as.dist(dist_mat), k = 2)
-         mds_coords[,2] <- -mds_coords[,2]  # Flip Y untuk orientasi benar
-       } else {
-         # Untuk hierarchical atau default, generate MDS dari distance matrix
-         dist_mat <- as.matrix(distance_matrix)
-         if (ncol(dist_mat) > nrow(dist_mat)) {
-           dist_mat <- dist_mat[, -1]
-         }
-         mds_coords <- cmdscale(as.dist(dist_mat), k = 2)
-         mds_coords[,2] <- -mds_coords[,2]  # Flip Y untuk orientasi benar
-       }
+      # Coba ambil dari clustering result
+      if (!is.null(clustering$mds)) {
+        mds_coords <- clustering$mds
+      } else {
+        # Generate MDS dari distance matrix
+        dist_mat <- as.matrix(distance_matrix)
+        if (ncol(dist_mat) > nrow(dist_mat)) {
+          dist_mat <- dist_mat[, -1]
+        }
+        mds_coords <- cmdscale(as.dist(dist_mat), k = 2)
+        mds_coords[,2] <- -mds_coords[,2]  # Flip Y untuk orientasi benar
+      }
       
-             # Validasi mds_coords
-       if (is.null(mds_coords) || nrow(mds_coords) != nrow(data)) {
-         # Fallback: generate random coordinates untuk Indonesia
-         n_points <- nrow(data)
-         set.seed(123)  # Untuk reproducibility
-         mds_coords <- cbind(
-           runif(n_points, -2000, 3000),  # Range yang mirip dengan MDS dimension 1
-           runif(n_points, -1000, 500)    # Range yang mirip dengan MDS dimension 2
-         )
-       }
-       
-       # Normalisasi MDS coordinates ke range geografis Indonesia yang realistis
-       x_normalized <- scales::rescale(mds_coords[,1], to = c(95, 141))   # Indonesia longitude range
-       y_normalized <- scales::rescale(mds_coords[,2], to = c(-11, 6))    # Indonesia latitude range
-       
-       # Validasi hasil normalisasi
-       if (any(is.na(x_normalized)) || any(is.na(y_normalized))) {
-         # Fallback coordinates jika normalisasi gagal
-         n_points <- nrow(data)
-         x_normalized <- runif(n_points, 95, 141)
-         y_normalized <- runif(n_points, -11, 6)
-       }
-      
-      # Buat data frame dengan koordinat MDS yang dinormalisasi
-      map_data <- data.frame(
-        Longitude = x_normalized,
-        Latitude = y_normalized,
-        Cluster = as.factor(data$Cluster),
-        County = if("County" %in% names(data)) as.character(data$County) else paste("Area", 1:nrow(data)),
-        SOVI_Score = if("SOVI_Score" %in% names(data)) as.numeric(data$SOVI_Score) else rep(NA, nrow(data)),
-        POPULATION = if("POPULATION" %in% names(data)) as.numeric(data$POPULATION) else rep(NA, nrow(data)),
-        NOSEWER = if("NOSEWER" %in% names(data)) as.numeric(data$NOSEWER) else rep(NA, nrow(data)),
-        TAPWATER = if("TAPWATER" %in% names(data)) as.numeric(data$TAPWATER) else rep(NA, nrow(data)),
-        stringsAsFactors = FALSE
-      )
-    
-    # Buat color palette yang konsisten dengan visualisasi clustering
-    cluster_colors <- rainbow(length(unique(map_data$Cluster)))
-    pal <- colorFactor(cluster_colors, map_data$Cluster)
-    
-    # Set view ke Indonesia dengan zoom yang tepat
-    leaflet(map_data) %>%
-      addTiles() %>%
-      setView(lng = 118, lat = -2, zoom = 5) %>%  # Pusat Indonesia
-      addCircleMarkers(
-        lng = ~Longitude, lat = ~Latitude,
-        color = "white",  # Border putih
-        fillColor = ~pal(Cluster),
-        weight = 1,  # Border tipis
-        radius = 6,  # Ukuran marker lebih kecil dan konsisten
-        fillOpacity = 0.9,
-        stroke = TRUE,
-        popup = ~paste0(
-          "<strong>", County, "</strong><br>",
-          "Cluster: ", Cluster, "<br>",
-          if(!is.na(SOVI_Score)) paste0("SOVI Score: ", round(SOVI_Score, 3), "<br>") else "",
-          if(!is.na(POPULATION)) paste0("Populasi: ", format(POPULATION, big.mark = ","), " jiwa<br>") else "",
-          if(!is.na(NOSEWER)) paste0("No Sewer: ", round(NOSEWER, 1), "%<br>") else "",
-          if(!is.na(TAPWATER)) paste0("Tap Water: ", round(TAPWATER, 1), "%") else "",
-          "<small><i>Posisi berdasarkan MDS clustering</i></small>"
-        ),
-        label = ~paste("Cluster", Cluster, "-", County),
-        labelOptions = labelOptions(
-          style = list("font-weight" = "normal", padding = "3px 8px"),
-          textsize = "12px",
-          direction = "auto"
+      # Fallback jika MDS gagal
+      if (is.null(mds_coords) || nrow(mds_coords) != nrow(data)) {
+        n_points <- nrow(data)
+        set.seed(123)
+        mds_coords <- cbind(
+          runif(n_points, -2000, 3000),
+          runif(n_points, -1000, 500)
         )
-      ) %>%
-      addLegend(
-        "bottomright", 
-        pal = pal, 
-        values = ~Cluster,
-        title = "Cluster",
-        opacity = 1,
-        labFormat = labelFormat(prefix = "Cluster ")
-      )
+      }
       
-    }, error = function(e) {
-      # Return empty map jika ada error
-      leaflet() %>%
+      # Normalisasi ke koordinat Indonesia
+      lng_coords <- scales::rescale(mds_coords[,1], to = c(95, 141))   # Longitude Indonesia
+      lat_coords <- scales::rescale(mds_coords[,2], to = c(-11, 6))    # Latitude Indonesia
+      
+      # Buat color palette
+      n_clusters <- length(unique(data$Cluster))
+      cluster_colors <- rainbow(n_clusters)
+      
+      # Buat peta dasar
+      map <- leaflet() %>%
         addTiles() %>%
         setView(lng = 118, lat = -2, zoom = 5)
+      
+      # Plot titik untuk setiap cluster
+      for (i in 1:n_clusters) {
+        cluster_idx <- which(data$Cluster == i)
+        if (length(cluster_idx) > 0) {
+          map <- map %>%
+            addCircleMarkers(
+              lng = lng_coords[cluster_idx],
+              lat = lat_coords[cluster_idx],
+              color = "white",
+              fillColor = cluster_colors[i],
+              weight = 2,
+              radius = 8,
+              fillOpacity = 0.8,
+              stroke = TRUE,
+              popup = paste0(
+                "<strong>Cluster ", i, "</strong><br>",
+                "Jumlah Titik: ", length(cluster_idx), "<br>",
+                "<small>Koordinat berdasarkan MDS</small>"
+              ),
+              label = paste("Cluster", i),
+              group = paste("Cluster", i)
+            )
+        }
+      }
+      
+      # Tambah legend
+      map <- map %>%
+        addLegend(
+          "bottomright",
+          colors = cluster_colors,
+          labels = paste("Cluster", 1:n_clusters),
+          title = "Clusters",
+          opacity = 1
+        )
+      
+      return(map)
+      
+    }, error = function(e) {
+      # Return peta kosong jika error
+      leaflet() %>%
+        addTiles() %>%
+        setView(lng = 118, lat = -2, zoom = 5) %>%
+        addControl(paste("Error:", e$message), position = "topright")
     })
   })
   
