@@ -4713,44 +4713,75 @@ Pastikan variabel yang dipilih adalah numerik.")
   })
   
   output$cluster_map <- renderLeaflet({
-    data <- values$current_data
-    clustering <- values$clustering_result
-    
-    if (!"Cluster" %in% names(data) || is.null(clustering)) return(NULL)
-    
-    # Gunakan MDS coordinates dari clustering result untuk sinkronisasi dengan scatter plot
-    if (!is.null(clustering$mds)) {
-      mds_coords <- clustering$mds
-    } else if (clustering$method == "pam") {
-      # Untuk PAM, generate MDS dari distance matrix
-      dist_mat <- as.matrix(distance_matrix)
-      if (ncol(dist_mat) > nrow(dist_mat)) {
-        dist_mat <- dist_mat[, -1]
+    # Validasi data dengan tryCatch untuk error handling
+    tryCatch({
+      data <- values$current_data
+      clustering <- values$clustering_result
+      
+      # Validasi kondisi yang lebih robust
+      if (is.null(data) || !"Cluster" %in% names(data) || is.null(clustering)) {
+        return(NULL)
       }
-      mds_coords <- cmdscale(as.dist(dist_mat), k = 2)
-      mds_coords[,2] <- -mds_coords[,2]  # Flip Y untuk orientasi benar
-    } else {
-      # Fallback ke koordinat geografis jika MDS tidak tersedia
-      if (!"Latitude" %in% names(data)) return(NULL)
-      mds_coords <- cbind(data$Longitude, data$Latitude)
-    }
-    
-    # Normalisasi MDS coordinates ke range geografis Indonesia yang realistis
-    # Normalize ke range longitude dan latitude Indonesia
-    x_normalized <- scales::rescale(mds_coords[,1], to = c(95, 141))   # Indonesia longitude range
-    y_normalized <- scales::rescale(mds_coords[,2], to = c(-11, 6))    # Indonesia latitude range
-    
-    # Buat data frame dengan koordinat MDS yang dinormalisasi
-    map_data <- data.frame(
-      Longitude = x_normalized,
-      Latitude = y_normalized,
-      Cluster = data$Cluster,
-      County = if("County" %in% names(data)) data$County else paste("Area", 1:nrow(data)),
-      SOVI_Score = if("SOVI_Score" %in% names(data)) data$SOVI_Score else NA,
-      POPULATION = if("POPULATION" %in% names(data)) data$POPULATION else NA,
-      NOSEWER = if("NOSEWER" %in% names(data)) data$NOSEWER else NA,
-      TAPWATER = if("TAPWATER" %in% names(data)) data$TAPWATER else NA
-    )
+      
+      # Pastikan data memiliki minimal 1 row
+      if (nrow(data) == 0) return(NULL)
+      
+      # Gunakan MDS coordinates dari clustering result untuk sinkronisasi dengan scatter plot
+      mds_coords <- NULL
+      
+      if (!is.null(clustering$mds)) {
+        mds_coords <- clustering$mds
+      } else if (!is.null(clustering$method) && clustering$method == "pam") {
+        # Untuk PAM, generate MDS dari distance matrix
+        dist_mat <- as.matrix(distance_matrix)
+        if (ncol(dist_mat) > nrow(dist_mat)) {
+          dist_mat <- dist_mat[, -1]
+        }
+        mds_coords <- cmdscale(as.dist(dist_mat), k = 2)
+        mds_coords[,2] <- -mds_coords[,2]  # Flip Y untuk orientasi benar
+      } else {
+        # Fallback ke koordinat geografis jika MDS tidak tersedia
+        if (any(c("Latitude", "Longitude") %in% names(data))) {
+          # Gunakan koordinat geografis yang ada
+          lat_col <- if("Latitude" %in% names(data)) data$Latitude else rep(-2, nrow(data))
+          lng_col <- if("Longitude" %in% names(data)) data$Longitude else rep(118, nrow(data))
+          mds_coords <- cbind(lng_col, lat_col)
+        } else {
+          # Generate koordinat default untuk Indonesia
+          n_points <- nrow(data)
+          mds_coords <- cbind(
+            runif(n_points, 95, 141),   # Longitude Indonesia
+            runif(n_points, -11, 6)     # Latitude Indonesia
+          )
+        }
+      }
+      
+      # Validasi mds_coords
+      if (is.null(mds_coords) || nrow(mds_coords) != nrow(data)) {
+        return(NULL)
+      }
+      
+      # Normalisasi MDS coordinates ke range geografis Indonesia yang realistis
+      x_normalized <- scales::rescale(mds_coords[,1], to = c(95, 141))   # Indonesia longitude range
+      y_normalized <- scales::rescale(mds_coords[,2], to = c(-11, 6))    # Indonesia latitude range
+      
+      # Validasi hasil normalisasi
+      if (any(is.na(x_normalized)) || any(is.na(y_normalized))) {
+        return(NULL)
+      }
+      
+      # Buat data frame dengan koordinat MDS yang dinormalisasi
+      map_data <- data.frame(
+        Longitude = x_normalized,
+        Latitude = y_normalized,
+        Cluster = as.factor(data$Cluster),
+        County = if("County" %in% names(data)) as.character(data$County) else paste("Area", 1:nrow(data)),
+        SOVI_Score = if("SOVI_Score" %in% names(data)) as.numeric(data$SOVI_Score) else rep(NA, nrow(data)),
+        POPULATION = if("POPULATION" %in% names(data)) as.numeric(data$POPULATION) else rep(NA, nrow(data)),
+        NOSEWER = if("NOSEWER" %in% names(data)) as.numeric(data$NOSEWER) else rep(NA, nrow(data)),
+        TAPWATER = if("TAPWATER" %in% names(data)) as.numeric(data$TAPWATER) else rep(NA, nrow(data)),
+        stringsAsFactors = FALSE
+      )
     
     # Buat color palette yang konsisten dengan visualisasi clustering
     cluster_colors <- rainbow(length(unique(map_data$Cluster)))
@@ -4792,6 +4823,13 @@ Pastikan variabel yang dipilih adalah numerik.")
         opacity = 1,
         labFormat = labelFormat(prefix = "Cluster ")
       )
+      
+    }, error = function(e) {
+      # Return empty map jika ada error
+      leaflet() %>%
+        addTiles() %>%
+        setView(lng = 118, lat = -2, zoom = 5)
+    })
   })
   
   output$cluster_table <- DT::renderDataTable({
