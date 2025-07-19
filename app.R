@@ -26,6 +26,7 @@ library(nortest)
 library(car)
 library(broom)
 library(dplyr)
+library(tidyr)
 library(gridExtra)
 library(sf)
 library(maps)
@@ -167,7 +168,7 @@ create_interpretation <- function(test_result, test_type) {
                    "**INTERPRETASI:** Varians antar kelompok tidak homogen pada tingkat signifikansi 5%.\n",
                    "**REKOMENDASI:** Gunakan uji Welch's ANOVA atau transformasi data."))
     }
-  } else if (test_type == "t_test") {
+  } else if (test_type == "t_test" || test_type == "paired_t_test") {
     if (p_value > alpha) {
       return(paste0("**KESIMPULAN:** p-value (", format(p_value, scientific = TRUE), ") > α (", alpha, 
                    "), maka GAGAL TOLAK H₀.\n",
@@ -1468,8 +1469,14 @@ ui <- dashboardPage(
                       numericInput("test_value", "Nilai yang Diuji:", value = 0)
                     ),
                     conditionalPanel(
-                      condition = "input.mean_test_type != 'one_sample'",
+                      condition = "input.mean_test_type == 'two_sample'",
                       selectInput("group_var_mean", "Variabel Kelompok:", choices = NULL)
+                    ),
+                    conditionalPanel(
+                      condition = "input.mean_test_type == 'paired'",
+                      selectInput("paired_var1", "Variabel Pertama:", choices = NULL),
+                      selectInput("paired_var2", "Variabel Kedua:", choices = NULL),
+                      helpText("Pilih dua variabel numerik untuk membandingkan pengukuran berpasangan (sebelum-sesudah, pre-post, dll.)")
                     ),
                     numericInput("confidence_level", "Confidence Level:", value = 0.95, min = 0.8, max = 0.99, step = 0.01),
                     actionButton("run_mean_test", "Jalankan Uji", class = "btn-primary")
@@ -2013,6 +2020,8 @@ server <- function(input, output, session) {
       updateSelectInput(session, "y_var", choices = numeric_vars)
       updateSelectInput(session, "assumption_var", choices = numeric_vars)
       updateSelectInput(session, "mean_test_var", choices = numeric_vars)
+      updateSelectInput(session, "paired_var1", choices = numeric_vars)
+      updateSelectInput(session, "paired_var2", choices = numeric_vars)
       updateSelectInput(session, "prop_var_variable", choices = all_vars)
       updateSelectInput(session, "anova_dependent", choices = numeric_vars)
       updateSelectInput(session, "anova_factor1", choices = factor_vars)
@@ -2060,17 +2069,71 @@ server <- function(input, output, session) {
     if (!is.null(input$file_upload) && input$data_source == "custom") {
       tryCatch({
         file_ext <- tools::file_ext(input$file_upload$name)
-        if (file_ext %in% c("csv")) {
-          values$current_data <- read.csv(input$file_upload$datapath, stringsAsFactors = FALSE)
-        } else if (file_ext %in% c("xlsx", "xls")) {
-          values$current_data <- openxlsx::read.xlsx(input$file_upload$datapath)
-        } else if (file_ext %in% c("sav")) {
-          values$current_data <- haven::read_sav(input$file_upload$datapath)
-          # Convert to data.frame and handle labels
-          values$current_data <- as.data.frame(values$current_data)
-        } else {
-          showNotification("Format file tidak didukung!", type = "error")
+        file_path <- input$file_upload$datapath
+        
+        # Validate file size (max 50MB)
+        file_size <- file.info(file_path)$size / (1024^2)  # Size in MB
+        if (file_size > 50) {
+          showNotification("File terlalu besar! Maksimal 50MB.", type = "error")
           return()
+        }
+        
+        # Read file based on extension
+        if (file_ext %in% c("csv")) {
+          # Try different separators and encodings
+          values$current_data <- tryCatch({
+            read.csv(file_path, stringsAsFactors = FALSE, encoding = "UTF-8")
+          }, error = function(e1) {
+            tryCatch({
+              read.csv(file_path, stringsAsFactors = FALSE, sep = ";", encoding = "UTF-8")
+            }, error = function(e2) {
+              read.csv(file_path, stringsAsFactors = FALSE, sep = "\t", encoding = "UTF-8")
+            })
+          })
+        } else if (file_ext %in% c("xlsx", "xls")) {
+          if (!requireNamespace("openxlsx", quietly = TRUE)) {
+            showNotification("Package openxlsx tidak tersedia!", type = "error")
+            return()
+          }
+          values$current_data <- openxlsx::read.xlsx(file_path)
+        } else if (file_ext %in% c("sav")) {
+          if (!requireNamespace("haven", quietly = TRUE)) {
+            showNotification("Package haven tidak tersedia!", type = "error")
+            return()
+          }
+          temp_data <- haven::read_sav(file_path)
+          # Convert to data.frame and handle labels
+          values$current_data <- as.data.frame(temp_data)
+          # Remove SPSS attributes that can cause issues
+          attributes(values$current_data) <- attributes(values$current_data)[c("names", "row.names", "class")]
+        } else {
+          showNotification("Format file tidak didukung! Gunakan CSV, Excel (.xlsx/.xls), atau SPSS (.sav).", type = "error")
+          return()
+        }
+        
+        # Validate data
+        if (is.null(values$current_data) || nrow(values$current_data) == 0) {
+          showNotification("File kosong atau tidak dapat dibaca!", type = "error")
+          return()
+        }
+        
+        if (ncol(values$current_data) == 0) {
+          showNotification("File tidak memiliki kolom yang valid!", type = "error")
+          return()
+        }
+        
+        # Clean column names
+        names(values$current_data) <- make.names(names(values$current_data), unique = TRUE)
+        
+        # Convert character columns with numbers to numeric where appropriate
+        for (col in names(values$current_data)) {
+          if (is.character(values$current_data[[col]])) {
+            # Try to convert to numeric if it looks like numbers
+            numeric_test <- suppressWarnings(as.numeric(values$current_data[[col]]))
+            if (sum(is.na(numeric_test)) < nrow(values$current_data) * 0.5) {  # Less than 50% NA
+              values$current_data[[col]] <- numeric_test
+            }
+          }
         }
         
         # Tambahkan koordinat Indonesia jika belum ada
@@ -2080,9 +2143,17 @@ server <- function(input, output, session) {
           values$current_data$Longitude <- runif(n_points, 95, 141) # Indonesia longitude range: 95°E to 141°E
         }
         
-        showNotification("File berhasil diupload!", type = "message")
+        showNotification(paste("File berhasil diupload!", nrow(values$current_data), "baris,", ncol(values$current_data), "kolom"), type = "message")
+        
       }, error = function(e) {
         showNotification(paste("Error loading file:", e$message), type = "error")
+        # Reset to default data on error
+        tryCatch({
+          data_list <- load_data()
+          values$current_data <- data_list$sovi
+        }, error = function(e2) {
+          showNotification("Gagal memuat data default!", type = "error")
+        })
       })
     }
   })
@@ -2337,21 +2408,33 @@ server <- function(input, output, session) {
         
       } else if (input$plot_type == "boxplot") {
         req(input$y_var)
-        p <- ggplot(values$current_data, aes_string(x = input$x_var, y = input$y_var))
-        if (input$color_var != "none") {
-          p <- p + aes_string(fill = input$color_var) +
-            scale_fill_manual(values = color_palette) +
-            geom_boxplot(alpha = 0.7, outlier.shape = 16, outlier.size = 2, 
-                         size = 1.2, width = 0.6)
+        if (input$x_var != "none" && is.factor(values$current_data[[input$x_var]]) || is.character(values$current_data[[input$x_var]])) {
+          # Categorical x-variable for grouping
+          p <- ggplot(values$current_data, aes_string(x = input$x_var, y = input$y_var))
+          if (input$color_var != "none") {
+            p <- p + aes_string(fill = input$color_var) +
+              scale_fill_manual(values = color_palette) +
+              geom_boxplot(alpha = 0.7, outlier.shape = 16, outlier.size = 2, 
+                           linewidth = 1.2, width = 0.6)
+          } else {
+            p <- p + geom_boxplot(fill = "#1f77b4", alpha = 0.7, outlier.shape = 16, 
+                                  outlier.size = 2, linewidth = 1.2, width = 0.6)
+          }
+          p <- p + labs(title = paste("Box Plot:", input$y_var, "by", input$x_var)) +
+            theme_minimal() +
+            theme(axis.text.x = element_text(angle = 45, hjust = 1),
+                  panel.grid.major = element_line(color = "gray90", linewidth = 0.5),
+                  panel.grid.minor = element_blank())
         } else {
-          p <- p + geom_boxplot(fill = "#1f77b4", alpha = 0.7, outlier.shape = 16, 
-                                outlier.size = 2, size = 1.2, width = 0.6)
+          # Single boxplot for numeric y-variable
+          p <- ggplot(values$current_data, aes_string(y = input$y_var)) +
+            geom_boxplot(fill = "#1f77b4", alpha = 0.7, outlier.shape = 16, 
+                         outlier.size = 2, linewidth = 1.2, width = 0.6) +
+            labs(title = paste("Box Plot:", input$y_var), x = "", y = input$y_var) +
+            theme_minimal() +
+            theme(panel.grid.major = element_line(color = "gray90", linewidth = 0.5),
+                  panel.grid.minor = element_blank())
         }
-        p <- p + labs(title = paste("Box Plot:", input$y_var, "by", input$x_var)) +
-          theme_minimal() +
-          theme(axis.text.x = element_text(angle = 45, hjust = 1),
-                panel.grid.major = element_line(color = "gray90", size = 0.5),
-                panel.grid.minor = element_blank())
         
       } else if (input$plot_type == "histogram") {
         p <- ggplot(values$current_data, aes_string(x = input$x_var))
@@ -2367,20 +2450,29 @@ server <- function(input, output, session) {
         
       } else if (input$plot_type == "barplot") {
         # Fixed bar plot
+        req(input$x_var)
+        
+        # Create bar data with proper handling of missing values
         bar_data <- values$current_data %>%
-          count(!!sym(input$x_var))
+          filter(!is.na(!!sym(input$x_var))) %>%
+          count(!!sym(input$x_var), name = "n")
         
         p <- ggplot(bar_data, aes_string(x = input$x_var, y = "n"))
+        
         if (input$color_var != "none" && input$color_var %in% names(values$current_data)) {
-          color_data <- values$current_data[[input$color_var]][match(bar_data[[input$x_var]], values$current_data[[input$x_var]])]
-          bar_data$color_var <- color_data
-          p <- ggplot(bar_data, aes_string(x = input$x_var, y = "n", fill = "color_var")) +
-            scale_fill_manual(values = color_palette)
+          # Add color grouping
+          color_summary <- values$current_data %>%
+            filter(!is.na(!!sym(input$x_var)), !is.na(!!sym(input$color_var))) %>%
+            count(!!sym(input$x_var), !!sym(input$color_var), name = "n")
+          
+          p <- ggplot(color_summary, aes_string(x = input$x_var, y = "n", fill = input$color_var)) +
+            scale_fill_manual(values = color_palette) +
+            geom_bar(stat = "identity", alpha = 0.7, position = "stack")
         } else {
-          p <- p + aes(fill = factor(1))
+          p <- p + geom_bar(stat = "identity", alpha = 0.7, fill = "#1f77b4")
         }
-        p <- p + geom_bar(stat = "identity", alpha = 0.7) +
-          labs(title = paste("Bar Chart:", input$x_var), y = "Count") +
+        
+        p <- p + labs(title = paste("Bar Chart:", input$x_var), y = "Count") +
           theme_minimal() +
           theme(axis.text.x = element_text(angle = 45, hjust = 1))
         
@@ -2490,64 +2582,64 @@ server <- function(input, output, session) {
     
     # Create different map types
     if (input$map_type == "heatmap") {
-      # Heat map style
+      # Heat map style with red-yellow gradient
       pal <- colorNumeric(
-        palette = "YlOrRd",
+        palette = c("#FFFF99", "#FF9900", "#FF0000"),  # Yellow to Red gradient
         domain = map_data$value
       )
       
       map_widget <- leaflet(map_data) %>%
         addProviderTiles(providers$CartoDB.Positron) %>%
-        setView(lng = -95, lat = 39, zoom = 4) %>%
+        setView(lng = 118, lat = -2, zoom = 5) %>%
         addCircleMarkers(
           ~lng, ~lat,
-          radius = 8,
-          color = "white",
-          weight = 1,
+          radius = ~pmax(6, pmin(15, 8 + (value - min(value, na.rm = TRUE)) / (max(value, na.rm = TRUE) - min(value, na.rm = TRUE)) * 7)),
+          color = "darkred",
+          weight = 2,
           fillColor = ~pal(value),
-          fillOpacity = 0.8,
-          popup = ~paste("<strong>", input$map_variable, ":</strong>", round(value, 3))
+          fillOpacity = 0.9,
+          popup = ~paste("<strong>", input$map_variable, ":</strong>", round(value, 3), "<br><em>Style: Heatmap</em>")
         )
       
     } else if (input$map_type == "choropleth") {
-      # Choropleth style with larger circles
+      # Choropleth style with blue gradient and variable sizes
       pal <- colorBin(
-        palette = "Blues",
+        palette = c("#E6F3FF", "#99CCFF", "#3399FF", "#0066CC", "#003366"),  # Light to dark blue
         domain = map_data$value,
         bins = 5
       )
       
       map_widget <- leaflet(map_data) %>%
         addProviderTiles(providers$OpenStreetMap) %>%
-        setView(lng = -95, lat = 39, zoom = 4) %>%
+        setView(lng = 118, lat = -2, zoom = 5) %>%
         addCircleMarkers(
           ~lng, ~lat,
-          radius = ~pmax(5, pmin(20, (value - min(value, na.rm = TRUE)) / (max(value, na.rm = TRUE) - min(value, na.rm = TRUE)) * 15 + 5)),
-          color = "darkblue",
-          weight = 2,
+          radius = ~pmax(8, pmin(25, (value - min(value, na.rm = TRUE)) / (max(value, na.rm = TRUE) - min(value, na.rm = TRUE)) * 17 + 8)),
+          color = "navy",
+          weight = 3,
           fillColor = ~pal(value),
-          fillOpacity = 0.7,
-          popup = ~paste("<strong>", input$map_variable, ":</strong>", round(value, 3))
+          fillOpacity = 0.8,
+          popup = ~paste("<strong>", input$map_variable, ":</strong>", round(value, 3), "<br><em>Style: Choropleth</em>")
         )
       
     } else { # points
-      # Point map style
+      # Point map style with green gradient
       pal <- colorNumeric(
-        palette = c("#0066CC", "#3399FF", "#66B2FF", "#99CCFF", "#FFCC99", "#FF9966", "#FF6633", "#FF3300"),
+        palette = c("#90EE90", "#32CD32", "#228B22", "#006400", "#003300"),  # Light to dark green
         domain = map_data$value
       )
       
       map_widget <- leaflet(map_data) %>%
         addProviderTiles(providers$Esri.WorldImagery) %>%
-        setView(lng = -95, lat = 39, zoom = 4) %>%
+        setView(lng = 118, lat = -2, zoom = 5) %>%
         addCircleMarkers(
           ~lng, ~lat,
-          radius = 6,
-          color = "white",
-          weight = 1,
+          radius = 10,
+          color = "darkgreen",
+          weight = 2,
           fillColor = ~pal(value),
-          fillOpacity = 0.9,
-          popup = ~paste("<strong>", input$map_variable, ":</strong>", round(value, 3))
+          fillOpacity = 0.85,
+          popup = ~paste("<strong>", input$map_variable, ":</strong>", round(value, 3), "<br><em>Style: Points</em>")
         )
     }
     
@@ -2839,11 +2931,44 @@ server <- function(input, output, session) {
           )
         })
       }
+    } else if (input$mean_test_type == "paired" && !is.null(input$paired_var1) && !is.null(input$paired_var2)) {
+      # Paired t-test implementation
+      var1_data <- values$current_data[[input$paired_var1]]
+      var2_data <- values$current_data[[input$paired_var2]]
+      
+      # Remove rows with missing values in either variable
+      complete_pairs <- complete.cases(var1_data, var2_data)
+      var1_clean <- var1_data[complete_pairs]
+      var2_clean <- var2_data[complete_pairs]
+      
+      if (length(var1_clean) >= 3) {
+        test_result <- t.test(var1_clean, var2_clean, paired = TRUE, conf.level = input$confidence_level)
+        
+        output$mean_test_result <- renderText({
+          paste0(
+            "**HIPOTESIS UJI T BERPASANGAN:**\n\n",
+            "• H₀: μd = 0 (tidak ada perbedaan rata-rata antara kedua pengukuran)\n",
+            "• H₁: μd ≠ 0 (ada perbedaan rata-rata antara kedua pengukuran)\n\n",
+            "**HASIL UJI T BERPASANGAN:**\n\n",
+            "• t-statistic: ", round(test_result$statistic, 4), "\n",
+            "• df: ", test_result$parameter, "\n",
+            "• p-value: ", format(test_result$p.value, scientific = TRUE), "\n",
+            "• Confidence Interval for mean difference: [", paste(round(test_result$conf.int, 4), collapse = ", "), "]\n",
+            "• Mean difference (", input$paired_var1, " - ", input$paired_var2, "): ", round(test_result$estimate, 4), "\n",
+            "• Sample size (pairs): ", length(var1_clean)
+          )
+        })
+      } else {
+        output$mean_test_result <- renderText({
+          "Error: Tidak cukup data untuk uji t berpasangan. Minimal diperlukan 3 pasang observasi."
+        })
+      }
     }
     
     output$mean_test_interpretation <- renderText({
       if (exists("test_result")) {
-        basic_interp <- create_interpretation(test_result, "t_test")
+        test_type <- if(input$mean_test_type == "paired") "paired_t_test" else "t_test"
+        basic_interp <- create_interpretation(test_result, test_type)
         
         detailed_interp <- paste0(
           "**INTERPRETASI UJI RATA-RATA LENGKAP:**\n\n",
@@ -2875,11 +3000,11 @@ server <- function(input, output, session) {
       if (input$mean_test_type == "one_sample") {
         p <- ggplot(data.frame(x = var_data), aes(x = x)) +
           geom_histogram(bins = 30, alpha = 0.7, fill = "lightblue") +
-          geom_vline(xintercept = mean(var_data), color = "red", linetype = "dashed", size = 1) +
-          geom_vline(xintercept = input$test_value, color = "blue", linetype = "solid", size = 1) +
+          geom_vline(xintercept = mean(var_data), color = "red", linetype = "dashed", linewidth = 1) +
+          geom_vline(xintercept = input$test_value, color = "blue", linetype = "solid", linewidth = 1) +
           labs(title = "Distribution with Sample Mean (red) and Test Value (blue)") +
           theme_minimal()
-      } else {
+      } else if (input$mean_test_type == "two_sample" && !is.null(input$group_var_mean)) {
         group_data <- values$current_data[[input$group_var_mean]]
         plot_data <- data.frame(value = var_data, group = group_data)
         plot_data <- plot_data[complete.cases(plot_data), ]
@@ -2889,6 +3014,34 @@ server <- function(input, output, session) {
           geom_jitter(width = 0.2, alpha = 0.5) +
           labs(title = "Comparison between Groups") +
           theme_minimal()
+      } else if (input$mean_test_type == "paired" && !is.null(input$paired_var1) && !is.null(input$paired_var2)) {
+        var1_data <- values$current_data[[input$paired_var1]]
+        var2_data <- values$current_data[[input$paired_var2]]
+        complete_pairs <- complete.cases(var1_data, var2_data)
+        
+        paired_data <- data.frame(
+          ID = 1:sum(complete_pairs),
+          Before = var1_data[complete_pairs],
+          After = var2_data[complete_pairs]
+        )
+        
+        # Create paired plot showing before-after comparison
+        paired_long <- paired_data %>%
+          tidyr::pivot_longer(cols = c("Before", "After"), names_to = "Time", values_to = "Value")
+        
+        p <- ggplot(paired_long, aes(x = Time, y = Value)) +
+          geom_boxplot(alpha = 0.7, fill = "lightblue") +
+          geom_line(aes(group = ID), alpha = 0.3, color = "gray") +
+          geom_point(alpha = 0.6) +
+          labs(title = paste("Paired Comparison:", input$paired_var1, "vs", input$paired_var2),
+               x = "Measurement", y = "Value") +
+          theme_minimal()
+      } else {
+        # Default empty plot
+        p <- ggplot() + 
+          geom_text(aes(x = 0.5, y = 0.5, label = "Pilih variabel untuk menampilkan plot"), size = 5) +
+          xlim(0, 1) + ylim(0, 1) +
+          theme_void()
       }
       ggplotly(p)
     })
