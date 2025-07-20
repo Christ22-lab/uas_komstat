@@ -77,11 +77,20 @@ data_list <- load_data()
 sovi_data <- data_list$sovi
 distance_matrix <- data_list$distance
 
-# Tambahkan koordinat Indonesia ke sovi_data jika belum ada
+# CATATAN PENTING: Koordinat Latitude dan Longitude 
+# Dataset asli SOVI dan distance matrix TIDAK memiliki koordinat geografis riil
+# Koordinat yang ditampilkan adalah SIMULASI untuk keperluan visualisasi peta saja
+# BUKAN koordinat riil kabupaten/kota Indonesia
+
+# Tambahkan koordinat simulasi Indonesia jika belum ada (untuk keperluan visualisasi saja)
 if (!"Latitude" %in% names(sovi_data) || !"Longitude" %in% names(sovi_data)) {
   n_points <- nrow(sovi_data)
-  sovi_data$Latitude <- runif(n_points, -11, 6)   # Indonesia latitude range: 6°N to 11°S
-  sovi_data$Longitude <- runif(n_points, 95, 141) # Indonesia longitude range: 95°E to 141°E
+  set.seed(456)  # Untuk reproducibility
+  sovi_data$Latitude <- runif(n_points, -11, 6)   # Simulasi range Indonesia: 6°N to 11°S
+  sovi_data$Longitude <- runif(n_points, 95, 141) # Simulasi range Indonesia: 95°E to 141°E
+  
+  # Tambah warning di data
+  sovi_data$Coordinate_Note <- "SIMULASI - Bukan koordinat riil kabupaten/kota"
 }
 
 # =================== CLUSTERING ANALYSIS (DISTANCE) ===================
@@ -1761,15 +1770,15 @@ ui <- dashboardPage(
                                         ),
                                         tags$tr(
                                           tags$td(strong("Latitude")),
-                                          tags$td("Koordinat lintang geografis pusat kabupaten/kota"),
+                                          tags$td("SIMULASI koordinat lintang untuk visualisasi peta (BUKAN koordinat riil kabupaten/kota)"),
                                           tags$td("Numerik (kontinyu)"),
-                                          tags$td("Derajat (-11° hingga 6°)")
+                                          tags$td("Derajat (-11° hingga 6°) - RANDOM")
                                         ),
                                         tags$tr(
                                           tags$td(strong("Longitude")),
-                                          tags$td("Koordinat bujur geografis pusat kabupaten/kota"),
+                                          tags$td("SIMULASI koordinat bujur untuk visualisasi peta (BUKAN koordinat riil kabupaten/kota)"),
                                           tags$td("Numerik (kontinyu)"),
-                                          tags$td("Derajat (95° hingga 141°)")
+                                          tags$td("Derajat (95° hingga 141°) - RANDOM")
                                         ),
                                         tags$tr(
                                           tags$td(strong("County")),
@@ -1787,6 +1796,45 @@ ui <- dashboardPage(
                                    )
                                  )
                         ),
+                        
+                        # PENTING: Koordinat Geografis  
+                        h4("PENTING: Tentang Koordinat Latitude & Longitude", style = "color: #e53e3e; margin-top: 30px;"),
+                        tags$div(class = "info-box", style = "border-left: 4px solid #e53e3e; background: linear-gradient(135deg, #fef5f5 0%, #fed7d7 100%);",
+                                 p(strong("DISCLAIMER KOORDINAT GEOGRAFIS:")),
+                                 
+                                 h5("Dataset Asli TIDAK Memiliki Koordinat"),
+                                 tags$ul(
+                                   tags$li("Dataset SOVI asli: ", strong("TIDAK"), " memiliki koordinat Latitude/Longitude"),
+                                   tags$li("Dataset Distance Matrix: ", strong("TIDAK"), " memiliki koordinat geografis"),
+                                   tags$li("Koordinat yang ditampilkan adalah ", strong("SIMULASI/BUATAN"), " untuk keperluan visualisasi")
+                                 ),
+                                 
+                                 h5("Cara Koordinat Ditentukan"),
+                                 tags$ol(
+                                   tags$li("Generated menggunakan runif() - random uniform distribution"),
+                                   tags$li("Range Indonesia: Latitude (-11° hingga 6°), Longitude (95° hingga 141°)"),
+                                   tags$li("Set seed untuk reproducibility: set.seed(456)"),
+                                   tags$li("BUKAN koordinat riil kabupaten/kota Indonesia")
+                                 ),
+                                 
+                                 h5("Tujuan Koordinat Simulasi"),
+                                 tags$ul(
+                                   tags$li(strong("Visualisasi Peta:"), " Untuk menampilkan peta interaktif dalam dashboard"),
+                                   tags$li(strong("Educational Purpose:"), " Demonstrasi teknik clustering dengan visualisasi spasial"),
+                                   tags$li(strong("User Experience:"), " Interface yang lebih menarik dan interaktif")
+                                 ),
+                                 
+                                 div(style = "background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px; padding: 10px; margin: 10px 0;",
+                                     p(strong("⚠️ PERINGATAN INTERPRETASI:"), style = "color: #856404; margin: 0;"),
+                                     tags$ul(style = "color: #856404; margin: 5px 0;",
+                                             tags$li("Jangan interpretasi peta sebagai lokasi geografis riil"),
+                                             tags$li("Posisi titik di peta adalah random, bukan lokasi kabupaten sebenarnya"),
+                                             tags$li("Fokus analisis pada clustering pattern, bukan distribusi geografis")
+                                     )
+                                 )
+                        ),
+                        
+                        hr(),
                         
                         # Dataset 2: Distance Matrix
                         h4("Dataset 2: Distance Matrix", style = "color: #764ba2; margin-top: 30px;"),
