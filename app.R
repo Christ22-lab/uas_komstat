@@ -227,8 +227,7 @@ ui <- dashboardPage(
       menuItem("Manajemen Data", tabName = "data_management", icon = icon("database")),
       menuItem("Eksplorasi Data", tabName = "exploration", icon = icon("chart-line"),
                menuSubItem("Statistik Deskriptif", tabName = "descriptive"),
-               menuSubItem("Visualisasi", tabName = "visualization"),
-               menuSubItem("Peta", tabName = "mapping")
+               menuSubItem("Visualisasi", tabName = "visualization")
       ),
       menuItem("Uji Asumsi", tabName = "assumptions", icon = icon("check-circle")),
       menuItem("Statistik Inferensia", tabName = "inference", icon = icon("calculator"),
@@ -1352,49 +1351,7 @@ ui <- dashboardPage(
               )
       ),
       
-      # =================== PEMETAAN ===================
-      tabItem(tabName = "mapping",
-              fluidRow(
-                box(width = 12, title = "Pemetaan Data - Visualisasi Spasial", status = "info", solidHeader = TRUE,
-                    div(class = "info-box",
-                        p(strong("Tujuan Menu:"), "Menu ini digunakan untuk membuat visualisasi data dalam bentuk peta interaktif untuk menganalisis pola geografis dan distribusi spasial."),
-                        p(strong("Fitur Utama:"), "Heat map, choropleth map, point map dengan koordinat geografis, legenda interaktif, dan fitur zoom/pan pada peta Leaflet."),
-                        p(strong("Cara Penggunaan:"), "1) Pilih variabel untuk dipetakan, 2) Tentukan jenis peta, 3) Buat peta interaktif, 4) Analisis pola spasial dan download peta.")
-                    )
-                )
-              ),
-              
-              fluidRow(
-                box(width = 4, title = "Pengaturan Peta", status = "primary", solidHeader = TRUE,
-                    p("Fitur pemetaan untuk data geografis SOVI dan hasil clustering"),
-                    selectInput("map_variable", "Variabel untuk Dipetakan:", choices = NULL),
-                    selectInput("map_type", "Jenis Peta:",
-                                choices = list(
-                                  "Heat Map" = "heatmap",
-                                  "Choropleth" = "choropleth", 
-                                  "Point Map" = "points",
-                                  "Cluster Map" = "cluster"
-                                )),
-                    conditionalPanel(
-                      condition = "input.map_type == 'cluster'",
-                      checkboxInput("show_cluster_centers", "Tampilkan Pusat Cluster", value = TRUE),
-                      checkboxInput("show_cluster_hull", "Tampilkan Batas Cluster", value = FALSE)
-                    ),
-                    actionButton("create_map", "Buat Peta", class = "btn-primary"),
-                    br(), br(),
-                    div(class = "interpretation-box",
-                        h5("Interpretasi Peta:"),
-                        textOutput("map_interpretation")
-                    )
-                ),
-                
-                box(width = 8, title = "Peta Interaktif", status = "info", solidHeader = TRUE,
-                    leafletOutput("interactive_map", height = "500px"),
-                    br(),
-                    downloadButton("download_map_jpg", "Download Peta (JPG)", class = "btn-success")
-                )
-              )
-      ),
+
       
       # =================== UJI ASUMSI ===================
       tabItem(tabName = "assumptions",
@@ -2443,7 +2400,7 @@ server <- function(input, output, session) {
       updateSelectInput(session, "anova_factor2", choices = factor_vars)
       updateSelectInput(session, "reg_dependent", choices = numeric_vars)
       updateSelectInput(session, "reg_independent", choices = numeric_vars)
-      updateSelectInput(session, "map_variable", choices = numeric_vars)
+
       
       # Group by options
       group_choices <- c("None" = "none", setNames(char_vars, char_vars))
@@ -2978,143 +2935,9 @@ server <- function(input, output, session) {
     })
   })
   
-  # =================== MAPPING (FIXED) ===================
-  # Reactive values for map
-  values$map_data <- reactive({
-    if (input$map_variable != "" && !is.null(input$map_variable)) {
-      n_points <- min(nrow(values$current_data), 200)  # Reduced for performance
-      indices <- sample(nrow(values$current_data), n_points)
-      
-      # Generate realistic Indonesian coordinates based on province data if available
-      if ("State" %in% names(values$current_data)) {
-        # Use province-based coordinates for Indonesia (major provinces)
-        province_coords <- data.frame(
-          State = c("DKI Jakarta", "Jawa Barat", "Jawa Tengah", "Jawa Timur", "Sumatera Utara", 
-                   "Sumatera Barat", "Sumatera Selatan", "Kalimantan Timur", "Sulawesi Selatan", "Bali"),
-          lat = c(-6.2088, -6.9175, -7.2575, -7.5360, 3.5952, -0.7893, -3.3194, -0.5022, -5.1477, -8.4095),
-          lng = c(106.8456, 107.6191, 110.1775, 112.2384, 98.6722, 100.6500, 103.9140, 117.1537, 119.4327, 115.1889)
-        )
-        
-        sample_data <- values$current_data[indices, ]
-        map_coords <- merge(sample_data, province_coords, by = "State", all.x = TRUE)
-        
-        # Add random variation to coordinates within Indonesia
-        map_coords$lat <- map_coords$lat + runif(nrow(map_coords), -1, 1)
-        map_coords$lng <- map_coords$lng + runif(nrow(map_coords), -1, 1)
-        
-        # Fill missing coordinates with random Indonesian coordinates
-        missing_coords <- is.na(map_coords$lat)
-        map_coords$lat[missing_coords] <- runif(sum(missing_coords), -11, 6)  # Indonesia latitude range
-        map_coords$lng[missing_coords] <- runif(sum(missing_coords), 95, 141) # Indonesia longitude range
-      } else {
-        # Generate random Indonesian coordinates
-        map_coords <- values$current_data[indices, ]
-        map_coords$lat <- runif(n_points, -11, 6)   # Indonesia latitude range: 6°N to 11°S
-        map_coords$lng <- runif(n_points, 95, 141)  # Indonesia longitude range: 95°E to 141°E
-      }
-      
-      map_coords$value <- map_coords[[input$map_variable]]
-      return(map_coords)
-    }
-    return(NULL)
-  })
+
   
-  observeEvent(input$create_map, {
-    req(input$map_variable)
-    
-    map_data <- values$map_data()
-    if (is.null(map_data)) return()
-    
-    # Create different map types
-    if (input$map_type == "heatmap") {
-      # Heat map style with red-yellow gradient
-      pal <- colorNumeric(
-        palette = c("#FFFF99", "#FF9900", "#FF0000"),  # Yellow to Red gradient
-        domain = map_data$value
-      )
-      
-      map_widget <- leaflet(map_data) %>%
-        addProviderTiles(providers$CartoDB.Positron) %>%
-        setView(lng = 118, lat = -2, zoom = 5) %>%
-        addCircleMarkers(
-          ~lng, ~lat,
-          radius = ~pmax(6, pmin(15, 8 + (value - min(value, na.rm = TRUE)) / (max(value, na.rm = TRUE) - min(value, na.rm = TRUE)) * 7)),
-          color = "darkred",
-          weight = 2,
-          fillColor = ~pal(value),
-          fillOpacity = 0.9,
-          popup = ~paste("<strong>", input$map_variable, ":</strong>", round(value, 3), "<br><em>Style: Heatmap</em>")
-        )
-      
-    } else if (input$map_type == "choropleth") {
-      # Choropleth style with blue gradient and variable sizes
-      pal <- colorBin(
-        palette = c("#E6F3FF", "#99CCFF", "#3399FF", "#0066CC", "#003366"),  # Light to dark blue
-        domain = map_data$value,
-        bins = 5
-      )
-      
-      map_widget <- leaflet(map_data) %>%
-        addProviderTiles(providers$OpenStreetMap) %>%
-        setView(lng = 118, lat = -2, zoom = 5) %>%
-        addCircleMarkers(
-          ~lng, ~lat,
-          radius = ~pmax(8, pmin(25, (value - min(value, na.rm = TRUE)) / (max(value, na.rm = TRUE) - min(value, na.rm = TRUE)) * 17 + 8)),
-          color = "navy",
-          weight = 3,
-          fillColor = ~pal(value),
-          fillOpacity = 0.8,
-          popup = ~paste("<strong>", input$map_variable, ":</strong>", round(value, 3), "<br><em>Style: Choropleth</em>")
-        )
-      
-    } else { # points
-      # Point map style with green gradient
-      pal <- colorNumeric(
-        palette = c("#90EE90", "#32CD32", "#228B22", "#006400", "#003300"),  # Light to dark green
-        domain = map_data$value
-      )
-      
-      map_widget <- leaflet(map_data) %>%
-        addProviderTiles(providers$Esri.WorldImagery) %>%
-        setView(lng = 118, lat = -2, zoom = 5) %>%
-        addCircleMarkers(
-          ~lng, ~lat,
-          radius = 10,
-          color = "darkgreen",
-          weight = 2,
-          fillColor = ~pal(value),
-          fillOpacity = 0.85,
-          popup = ~paste("<strong>", input$map_variable, ":</strong>", round(value, 3), "<br><em>Style: Points</em>")
-        )
-    }
-    
-    # Add legend and scale
-    map_widget <- map_widget %>%
-      addLegend(
-        "bottomright",
-        pal = pal,
-        values = ~value,
-        title = paste("Nilai", input$map_variable),
-        opacity = 0.8
-      ) %>%
-      addScaleBar(position = "bottomleft")
-    
-    output$interactive_map <- renderLeaflet({
-      map_widget
-    })
-    
-    output$map_interpretation <- renderText({
-      map_type_desc <- switch(input$map_type,
-                              "heatmap" = "Heat map menggunakan gradasi warna untuk menunjukkan intensitas nilai variabel dengan latar belakang yang bersih.",
-                              "choropleth" = "Choropleth map menggunakan ukuran dan warna lingkaran untuk menunjukkan variasi nilai dengan peta standar sebagai latar.",
-                              "points" = "Point map menampilkan data sebagai titik-titik dengan warna yang mencerminkan nilai variabel di atas citra satelit."
-      )
-      
-      paste0("Interpretasi Peta:\n\nPeta interaktif menunjukkan distribusi geografis dari variabel ", input$map_variable, 
-             " menggunakan style ", input$map_type, ". ", map_type_desc,
-             "\nKlik pada titik untuk melihat nilai detail. Pola spasial dapat mengungkap clustering geografis atau distribusi regional.")
-    })
-  })
+
   
   # =================== ASSUMPTION TESTS (FIXED) ===================
   observeEvent(input$run_assumptions, {
@@ -4593,28 +4416,7 @@ Pastikan variabel yang dipilih adalah numerik.")
     }
   )
   
-  # JPG download for map (using webshot)
-  output$download_map_jpg <- downloadHandler(
-    filename = function() {
-      paste0("peta_", input$map_variable, "_", Sys.Date(), ".jpg")
-    },
-    content = function(file) {
-      map_data <- values$map_data()
-      if (!is.null(map_data)) {
-        # Create a simple ggplot map for JPG export
-        p_map <- ggplot(map_data, aes(x = lng, y = lat, color = value)) +
-          geom_point(size = 3, alpha = 0.7) +
-          scale_color_gradient2(low = "blue", high = "red", mid = "yellow", midpoint = median(map_data$value, na.rm = TRUE)) +
-          borders("state", colour = "black", fill = NA) +
-          coord_quickmap() +
-          labs(title = paste("Peta", input$map_variable), 
-               x = "Longitude", y = "Latitude", color = input$map_variable) +
-          theme_minimal()
-        
-        ggsave(file, plot = p_map, device = "jpeg", width = 12, height = 8, dpi = 300)
-      }
-    }
-  )
+
   
   # Download handler for assumption tests report
   output$download_assumption_report <- downloadHandler(
@@ -4930,9 +4732,20 @@ Pastikan variabel yang dipilih adalah numerik.")
         )
       }
       
-      # Normalisasi ke koordinat Indonesia
-      lng_coords <- scales::rescale(mds_coords[,1], to = c(95, 141))   # Longitude Indonesia
-      lat_coords <- scales::rescale(mds_coords[,2], to = c(-11, 6))    # Latitude Indonesia
+      # Normalisasi ke koordinat Indonesia (fokus pada area daratan)
+      # Gunakan range yang lebih sempit untuk memastikan koordinat berada di daratan
+      lng_coords <- scales::rescale(mds_coords[,1], to = c(105, 135))   # Fokus pada daratan utama Indonesia
+      lat_coords <- scales::rescale(mds_coords[,2], to = c(-8, 5))      # Fokus pada daratan, hindari laut selatan
+      
+      # Tambah offset untuk memastikan koordinat berada di daratan Indonesia
+      set.seed(456)  # Untuk reproducibility
+      # Tambah jitter kecil untuk spread yang lebih baik di daratan
+      lng_coords <- lng_coords + runif(length(lng_coords), -2, 2)
+      lat_coords <- lat_coords + runif(length(lat_coords), -1, 1)
+      
+      # Clamp coordinates untuk memastikan tetap dalam batas Indonesia
+      lng_coords <- pmax(102, pmin(138, lng_coords))  # Pastikan dalam batas longitude Indonesia
+      lat_coords <- pmax(-10, pmin(6, lat_coords))    # Pastikan dalam batas latitude Indonesia
       
       # Buat color palette
       n_clusters <- length(unique(data$Cluster))
@@ -5255,8 +5068,19 @@ Pastikan variabel yang dipilih adalah numerik.")
         }
         
         # Normalisasi ke koordinat Indonesia (sama seperti peta interaktif)
-        lng_coords <- scales::rescale(mds_coords[,1], to = c(95, 141))
-        lat_coords <- scales::rescale(mds_coords[,2], to = c(-11, 6))
+        # Gunakan range yang lebih sempit untuk memastikan koordinat berada di daratan
+        lng_coords <- scales::rescale(mds_coords[,1], to = c(105, 135))   # Fokus pada daratan utama Indonesia
+        lat_coords <- scales::rescale(mds_coords[,2], to = c(-8, 5))      # Fokus pada daratan, hindari laut selatan
+        
+        # Tambah offset untuk memastikan koordinat berada di daratan Indonesia
+        set.seed(456)  # Untuk reproducibility yang sama dengan peta interaktif
+        # Tambah jitter kecil untuk spread yang lebih baik di daratan
+        lng_coords <- lng_coords + runif(length(lng_coords), -2, 2)
+        lat_coords <- lat_coords + runif(length(lat_coords), -1, 1)
+        
+        # Clamp coordinates untuk memastikan tetap dalam batas Indonesia
+        lng_coords <- pmax(102, pmin(138, lng_coords))  # Pastikan dalam batas longitude Indonesia
+        lat_coords <- pmax(-10, pmin(6, lat_coords))    # Pastikan dalam batas latitude Indonesia
         
         # Buat data frame untuk plotting
         plot_data <- data.frame(
@@ -5353,116 +5177,12 @@ Pastikan variabel yang dipilih adalah numerik.")
   observe({
     numeric_vars <- names(values$current_data)[sapply(values$current_data, is.numeric)]
     factor_vars <- names(values$current_data)[sapply(values$current_data, is.factor)]
-    updateSelectInput(session, "map_variable", choices = c(numeric_vars, factor_vars))
+
   })
   
-  # Enhanced interactive map with clustering support
-  observeEvent(input$create_map, {
-    output$interactive_map <- renderLeaflet({
-      data <- values$current_data
-      
-      if (!"Latitude" %in% names(data) || !"Longitude" %in% names(data)) {
-        return(leaflet() %>% addTiles() %>% 
-               addPopups(lng = 0, lat = 0, popup = "Data koordinat tidak tersedia"))
-      }
-      
-      map <- leaflet(data) %>% addTiles()
-      
-      if (input$map_type == "cluster" && "Cluster" %in% names(data)) {
-        # Cluster map
-        pal <- colorFactor(rainbow(length(unique(data$Cluster))), data$Cluster)
-        
-        map <- map %>%
-          addCircleMarkers(
-            lng = ~Longitude, lat = ~Latitude,
-            color = ~pal(Cluster),
-            popup = ~paste("Cluster:", Cluster, "<br>", 
-                          if("County" %in% names(data)) paste("County:", County) else "",
-                          if("SOVI_Score" %in% names(data)) paste("<br>SOVI Score:", round(SOVI_Score, 2)) else ""),
-            radius = 8,
-            fillOpacity = 0.8,
-            stroke = TRUE,
-            weight = 2
-          ) %>%
-          addLegend("bottomright", pal = pal, values = ~Cluster,
-                    title = "Cluster", opacity = 1)
-        
-        # Add cluster centers if requested
-        if (input$show_cluster_centers) {
-          cluster_centers <- data %>%
-            group_by(Cluster) %>%
-            summarise(
-              center_lat = mean(Latitude, na.rm = TRUE),
-              center_lng = mean(Longitude, na.rm = TRUE),
-              .groups = 'drop'
-            )
-          
-          map <- map %>%
-            addMarkers(
-              data = cluster_centers,
-              lng = ~center_lng, lat = ~center_lat,
-              popup = ~paste("Pusat Cluster:", Cluster),
-              icon = makeIcon(iconUrl = "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
-                             iconWidth = 25, iconHeight = 41)
-            )
-        }
-        
-      } else if (input$map_variable %in% names(data)) {
-        # Regular variable mapping
-        var_data <- data[[input$map_variable]]
-        
-        if (is.numeric(var_data)) {
-          pal <- colorNumeric("YlOrRd", var_data)
-          map <- map %>%
-            addCircleMarkers(
-              lng = ~Longitude, lat = ~Latitude,
-              color = ~pal(get(input$map_variable)),
-              popup = ~paste(input$map_variable, ":", get(input$map_variable)),
-              radius = 8,
-              fillOpacity = 0.8
-            ) %>%
-            addLegend("bottomright", pal = pal, values = var_data,
-                      title = input$map_variable, opacity = 1)
-        } else {
-          pal <- colorFactor("Set3", var_data)
-          map <- map %>%
-            addCircleMarkers(
-              lng = ~Longitude, lat = ~Latitude,
-              color = ~pal(get(input$map_variable)),
-              popup = ~paste(input$map_variable, ":", get(input$map_variable)),
-              radius = 8,
-              fillOpacity = 0.8
-            ) %>%
-            addLegend("bottomright", pal = pal, values = var_data,
-                      title = input$map_variable, opacity = 1)
-        }
-      }
-      
-      map
-    })
-  })
+
   
-  # Enhanced map interpretation
-  output$map_interpretation <- renderText({
-    if (input$map_type == "cluster" && "Cluster" %in% names(values$current_data)) {
-      n_clusters <- length(unique(values$current_data$Cluster))
-      paste("Peta menunjukkan", n_clusters, "cluster yang terbentuk dari analisis distance matrix.",
-            "Setiap warna mewakili cluster yang berbeda. Observasi dalam cluster yang sama",
-            "memiliki karakteristik jarak yang serupa.")
-    } else if (!is.null(input$map_variable) && input$map_variable %in% names(values$current_data)) {
-      var_data <- values$current_data[[input$map_variable]]
-      if (is.numeric(var_data)) {
-        paste("Peta menunjukkan distribusi spasial dari", input$map_variable, 
-              "dengan rentang nilai dari", round(min(var_data, na.rm = TRUE), 2),
-              "hingga", round(max(var_data, na.rm = TRUE), 2))
-      } else {
-        paste("Peta menunjukkan distribusi kategori dari", input$map_variable,
-              "dengan", length(unique(var_data)), "kategori yang berbeda.")
-      }
-         } else {
-       "Pilih variabel dan buat peta untuk melihat interpretasi."
-     }
-   })
+
    
    # =================== SERVER LOGIC UNTUK DISTANCE ANALYSIS ===================
    observeEvent(input$run_distance_analysis, {
