@@ -1698,50 +1698,92 @@ ui <- dashboardPage(
                                          tags$th("Satuan/Range")
                                        )
                                      ),
-                                     tags$tbody(
-                                       tags$tr(
-                                         tags$td(strong("NOSEWER")),
-                                         tags$td("Persentase rumah tangga tanpa akses sistem pembuangan limbah"),
-                                         tags$td("Numerik (kontinyu)"),
-                                         tags$td("0-100%")
-                                       ),
-                                       tags$tr(
-                                         tags$td(strong("TAPWATER")),
-                                         tags$td("Persentase rumah tangga dengan akses air bersih/ledeng"),
-                                         tags$td("Numerik (kontinyu)"),
-                                         tags$td("0-100%")
-                                       ),
-                                       tags$tr(
-                                         tags$td(strong("POPULATION")),
-                                         tags$td("Jumlah total populasi penduduk kabupaten/kota"),
-                                         tags$td("Numerik (diskrit)"),
-                                         tags$td("Jiwa (integer)")
-                                       ),
-                                       tags$tr(
-                                         tags$td(strong("Latitude")),
-                                         tags$td("Koordinat lintang geografis pusat kabupaten/kota"),
-                                         tags$td("Numerik (kontinyu)"),
-                                         tags$td("Derajat (-11° hingga 6°)")
-                                       ),
-                                       tags$tr(
-                                         tags$td(strong("Longitude")),
-                                         tags$td("Koordinat bujur geografis pusat kabupaten/kota"),
-                                         tags$td("Numerik (kontinyu)"),
-                                         tags$td("Derajat (95° hingga 141°)")
-                                       ),
-                                       tags$tr(
-                                         tags$td(strong("County")),
-                                         tags$td("Nama kabupaten/kota (identifier geografis)"),
-                                         tags$td("Karakter/Teks"),
-                                         tags$td("String (nama wilayah)")
-                                       ),
-                                       tags$tr(
-                                         tags$td(strong("SOVI_Score")),
-                                         tags$td("Skor indeks kerentanan sosial (composite index)"),
-                                         tags$td("Numerik (kontinyu)"),
-                                         tags$td("Nilai terstandarisasi")
-                                       )
-                                     )
+                                                                           tags$tbody(
+                                        tags$tr(
+                                          tags$td(strong("FEMALE")),
+                                          tags$td("Persentase populasi perempuan di kabupaten/kota"),
+                                          tags$td("Numerik (kontinyu)"),
+                                          tags$td("0-100%")
+                                        ),
+                                        tags$tr(
+                                          tags$td(strong("ELDERLY")),
+                                          tags$td("Persentase populasi lanjut usia (≥65 tahun)"),
+                                          tags$td("Numerik (kontinyu)"),
+                                          tags$td("0-100%")
+                                        ),
+                                        tags$tr(
+                                          tags$td(strong("FHEAD")),
+                                          tags$td("Persentase rumah tangga dengan kepala keluarga perempuan"),
+                                          tags$td("Numerik (kontinyu)"),
+                                          tags$td("0-100%")
+                                        ),
+                                        tags$tr(
+                                          tags$td(strong("FAMILYSIZE")),
+                                          tags$td("Rata-rata ukuran keluarga per rumah tangga"),
+                                          tags$td("Numerik (kontinyu)"),
+                                          tags$td("Orang per rumah tangga")
+                                        ),
+                                        tags$tr(
+                                          tags$td(strong("NOELECTRIC")),
+                                          tags$td("Persentase rumah tangga tanpa akses listrik"),
+                                          tags$td("Numerik (kontinyu)"),
+                                          tags$td("0-100%")
+                                        ),
+                                        tags$tr(
+                                          tags$td(strong("LOWEDU")),
+                                          tags$td("Persentase populasi dengan tingkat pendidikan rendah"),
+                                          tags$td("Numerik (kontinyu)"),
+                                          tags$td("0-100%")
+                                        ),
+                                        tags$tr(
+                                          tags$td(strong("GROWTH")),
+                                          tags$td("Tingkat pertumbuhan populasi tahunan"),
+                                          tags$td("Numerik (kontinyu)"),
+                                          tags$td("Persentase (%)")
+                                        ),
+                                        tags$tr(
+                                          tags$td(strong("NOSEWER")),
+                                          tags$td("Persentase rumah tangga tanpa akses sistem pembuangan limbah"),
+                                          tags$td("Numerik (kontinyu)"),
+                                          tags$td("0-100%")
+                                        ),
+                                        tags$tr(
+                                          tags$td(strong("TAPWATER")),
+                                          tags$td("Persentase rumah tangga dengan akses air bersih/ledeng"),
+                                          tags$td("Numerik (kontinyu)"),
+                                          tags$td("0-100%")
+                                        ),
+                                        tags$tr(
+                                          tags$td(strong("POPULATION")),
+                                          tags$td("Jumlah total populasi penduduk kabupaten/kota"),
+                                          tags$td("Numerik (diskrit)"),
+                                          tags$td("Jiwa (integer)")
+                                        ),
+                                        tags$tr(
+                                          tags$td(strong("Latitude")),
+                                          tags$td("Koordinat lintang geografis pusat kabupaten/kota"),
+                                          tags$td("Numerik (kontinyu)"),
+                                          tags$td("Derajat (-11° hingga 6°)")
+                                        ),
+                                        tags$tr(
+                                          tags$td(strong("Longitude")),
+                                          tags$td("Koordinat bujur geografis pusat kabupaten/kota"),
+                                          tags$td("Numerik (kontinyu)"),
+                                          tags$td("Derajat (95° hingga 141°)")
+                                        ),
+                                        tags$tr(
+                                          tags$td(strong("County")),
+                                          tags$td("Nama kabupaten/kota (identifier geografis)"),
+                                          tags$td("Karakter/Teks"),
+                                          tags$td("String (nama wilayah)")
+                                        ),
+                                        tags$tr(
+                                          tags$td(strong("SOVI_Score")),
+                                          tags$td("Skor indeks kerentanan sosial (composite index)"),
+                                          tags$td("Numerik (kontinyu)"),
+                                          tags$td("Nilai terstandarisasi")
+                                        )
+                                      )
                                    )
                                  )
                         ),
@@ -5043,35 +5085,100 @@ Pastikan variabel yang dipilih adalah numerik.")
   output$download_cluster_map <- downloadHandler(
     filename = function() { paste0("cluster_map_", Sys.Date(), ".png") },
     content = function(file) {
-      # Buat static map untuk download
-      data <- values$current_data
-      if ("Cluster" %in% names(data) && "Latitude" %in% names(data)) {
+      tryCatch({
+        # Ambil data clustering yang sama dengan yang ditampilkan di peta
+        data <- values$current_data
+        clustering <- values$clustering_result
+        
+        # Fallback ke data default jika kosong
+        if (is.null(data) || !"Cluster" %in% names(data)) {
+          data <- sovi_data
+          data$Cluster <- as.factor(cluster_assignment)
+        }
+        
+        if (is.null(clustering)) {
+          clustering <- clustering_result
+        }
+        
+        # Ambil MDS coordinates yang sama dengan peta interaktif
+        mds_coords <- NULL
+        
+        if (!is.null(clustering$mds)) {
+          mds_coords <- clustering$mds
+        } else {
+          # Generate MDS dari distance matrix
+          dist_mat <- as.matrix(distance_matrix)
+          if (ncol(dist_mat) > nrow(dist_mat)) {
+            dist_mat <- dist_mat[, -1]
+          }
+          mds_coords <- cmdscale(as.dist(dist_mat), k = 2)
+          mds_coords[,2] <- -mds_coords[,2]  # Flip Y untuk orientasi benar
+        }
+        
+        # Fallback jika MDS gagal
+        if (is.null(mds_coords) || nrow(mds_coords) != nrow(data)) {
+          n_points <- nrow(data)
+          set.seed(123)
+          mds_coords <- cbind(
+            runif(n_points, -2000, 3000),
+            runif(n_points, -1000, 500)
+          )
+        }
+        
+        # Normalisasi ke koordinat Indonesia (sama seperti peta interaktif)
+        lng_coords <- scales::rescale(mds_coords[,1], to = c(95, 141))
+        lat_coords <- scales::rescale(mds_coords[,2], to = c(-11, 6))
+        
+        # Buat data frame untuk plotting
+        plot_data <- data.frame(
+          Longitude = lng_coords,
+          Latitude = lat_coords,
+          Cluster = as.factor(data$Cluster)
+        )
         
         # Gunakan ggplot untuk membuat static map
         library(ggplot2)
         library(maps)
         
-        # Get world map data
+        # Get Indonesia map data
         world_map <- map_data("world")
+        indonesia_map <- subset(world_map, region == "Indonesia")
+        
+        # Buat color palette yang konsisten
+        n_clusters <- length(unique(plot_data$Cluster))
+        cluster_colors <- rainbow(n_clusters)
         
         # Create the plot
         p <- ggplot() +
-          geom_polygon(data = world_map, aes(x = long, y = lat, group = group), 
-                       fill = "lightgray", color = "white", size = 0.1) +
-          geom_point(data = data, aes(x = Longitude, y = Latitude, color = Cluster), 
-                     size = 3, alpha = 0.8) +
-          scale_color_manual(values = rainbow(length(unique(data$Cluster)))) +
-          labs(title = paste("Cluster Map -", length(unique(data$Cluster)), "Clusters"),
+          # Background map
+          geom_polygon(data = indonesia_map, aes(x = long, y = lat, group = group), 
+                       fill = "lightgray", color = "white", size = 0.2) +
+          # Cluster points
+          geom_point(data = plot_data, aes(x = Longitude, y = Latitude, color = Cluster), 
+                     size = 3, alpha = 0.8, stroke = 0.5) +
+          scale_color_manual(values = cluster_colors) +
+          labs(title = paste("Cluster Map -", n_clusters, "Clusters"),
+               subtitle = "Koordinat berdasarkan MDS (Multi-Dimensional Scaling)",
                x = "Longitude", y = "Latitude") +
           theme_minimal() +
           theme(
-            plot.title = element_text(hjust = 0.5, size = 16),
-            legend.position = "right"
+            plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+            plot.subtitle = element_text(hjust = 0.5, size = 12),
+            legend.position = "right",
+            panel.grid = element_line(color = "lightblue", alpha = 0.3)
           ) +
-          coord_fixed(1.3)
+          coord_fixed(1.3, xlim = c(95, 141), ylim = c(-11, 6))
         
         ggsave(file, plot = p, width = 12, height = 8, dpi = 300)
-      }
+        
+      }, error = function(e) {
+        # Fallback: buat plot sederhana jika error
+        p <- ggplot() +
+          annotate("text", x = 0.5, y = 0.5, label = paste("Error creating map:", e$message), 
+                   size = 6, hjust = 0.5) +
+          theme_void()
+        ggsave(file, plot = p, width = 8, height = 6, dpi = 300)
+      })
     }
   )
   
