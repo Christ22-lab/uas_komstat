@@ -1929,6 +1929,58 @@ ui <- dashboardPage(
                                  )
                         ),
                         
+                        # VARIABEL CLUSTERING
+                        h4("VARIABEL YANG DIGUNAKAN UNTUK CLUSTERING", style = "color: #2e7d32; margin-top: 30px;"),
+                        tags$div(class = "info-box", style = "border-left: 4px solid #4caf50; background: linear-gradient(135deg, #f1f8e9 0%, #c8e6c9 100%);",
+                                 h5("❌ KOORDINAT LATITUDE/LONGITUDE TIDAK DIGUNAKAN"),
+                                 div(style = "background: #ffebee; border: 1px solid #f44336; border-radius: 5px; padding: 10px; margin: 10px 0;",
+                                     p(strong("🚫 PENTING:"), style = "color: #c62828; margin: 0;"),
+                                     tags$ul(style = "color: #c62828; margin: 5px 0;",
+                                             tags$li("Koordinat Latitude/Longitude adalah VARIABEL TAMBAHAN/SIMULASI"),
+                                             tags$li("TIDAK digunakan dalam proses clustering apapun"),
+                                             tags$li("Hanya untuk VISUALISASI peta hasil clustering"),
+                                             tags$li("Clustering murni berdasarkan DISTANCE MATRIX")
+                                     )
+                                 ),
+                                 
+                                 h5("✅ VARIABEL ASLI YANG DIGUNAKAN: DISTANCE MATRIX"),
+                                 p(strong("Clustering menggunakan DISTANCE MATRIX yang sudah merangkum informasi dari semua variabel SOVI:")),
+                                 
+                                 tags$div(style = "display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0;",
+                                          tags$div(style = "background: #e8f5e8; padding: 10px; border-radius: 5px;",
+                                            h6("📊 Variabel Demografi:"),
+                                            tags$ul(style = "margin: 5px 0;",
+                                              tags$li("CHILDREN - Persentase anak-anak"),
+                                              tags$li("FEMALE - Persentase perempuan"),
+                                              tags$li("ELDERLY - Persentase lansia"),
+                                              tags$li("FHEAD - Female head household"),
+                                              tags$li("FAMILYSIZE - Ukuran keluarga"),
+                                              tags$li("POPULATION - Jumlah populasi")
+                                            )
+                                          ),
+                                          tags$div(style = "background: #e3f2fd; padding: 10px; border-radius: 5px;",
+                                            h6("🏗️ Variabel Infrastruktur:"),
+                                            tags$ul(style = "margin: 5px 0;",
+                                              tags$li("POVERTY - Tingkat kemiskinan"),
+                                              tags$li("GROWTH - Pertumbuhan populasi"),
+                                              tags$li("NOELECTRIC - Tanpa akses listrik"),
+                                              tags$li("NOSEWER - Tanpa akses sanitasi"),
+                                              tags$li("TAPWATER - Akses air bersih"),
+                                              tags$li("LOWEDU - Pendidikan rendah"),
+                                              tags$li("ILLITERATE - Tingkat buta huruf"),
+                                              tags$li("NOTRAINING - Tanpa pelatihan")
+                                            )
+                                          )
+                                 ),
+                                 
+                                 div(style = "background: #fff3e0; border: 1px solid #ff9800; border-radius: 5px; padding: 10px; margin: 10px 0;",
+                                     p(strong("💡 KESIMPULAN:"), style = "color: #ef6c00; margin: 0;"),
+                                     p("Clustering analysis CUKUP dengan variabel yang sudah ada di distance matrix. Tidak perlu variabel tambahan. Koordinat hanya untuk visualisasi geografis hasil clustering.", style = "color: #ef6c00; margin: 5px 0;")
+                                 )
+                        ),
+                        
+                        hr(),
+                        
                         # Penjelasan Visualisasi Clustering
                         h4("Penjelasan Visualisasi Clustering dan Distance Matrix", style = "color: #e53e3e; margin-top: 30px;"),
                         tags$div(class = "info-box", style = "border-left: 4px solid #e53e3e; background: linear-gradient(135deg, #fef5f5 0%, #fed7d7 100%);",
