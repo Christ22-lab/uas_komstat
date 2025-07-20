@@ -1839,6 +1839,35 @@ ui <- dashboardPage(
                         # Dataset 2: Distance Matrix
                         h4("Dataset 2: Distance Matrix", style = "color: #764ba2; margin-top: 30px;"),
                         tags$div(class = "info-box", style = "border-left: 4px solid #764ba2; background: linear-gradient(135deg, #faf8ff 0%, #f3f0ff 100%);",
+                                 
+                                 h5("APA ITU DISTANCE MATRIX?"),
+                                 p(strong("Distance Matrix adalah matriks simetris yang berisi jarak (dissimilarity) antara setiap pasangan observasi.")),
+                                 tags$ul(
+                                   tags$li(strong("Ukuran Matrix:"), " 512 × 512 (512 baris dan 512 kolom)"),
+                                   tags$li(strong("Representasi:"), " Entry (i,j) = jarak antara observasi ke-i dan observasi ke-j"),
+                                   tags$li(strong("Simetris:"), " Jarak dari A ke B = Jarak dari B ke A"),
+                                   tags$li(strong("Diagonal:"), " Jarak observasi ke dirinya sendiri = 0")
+                                 ),
+                                 
+                                 h5("INTERPRETASI NILAI DISTANCE"),
+                                 tags$ul(
+                                   tags$li(strong("Nilai Kecil (mendekati 0):"), " Observasi sangat mirip/dekat karakteristiknya"),
+                                   tags$li(strong("Nilai Besar:"), " Observasi sangat berbeda/jauh karakteristiknya"),
+                                   tags$li(strong("Contoh dari data:"), " Jarak terkecil = 0, jarak terbesar ≈ 5,000+")
+                                 ),
+                                 
+                                 h5("FUNGSI DALAM CLUSTERING"),
+                                 tags$ol(
+                                   tags$li(strong("Hierarchical Clustering:"), " Menggabungkan observasi berdasarkan jarak terdekat"),
+                                   tags$li(strong("PAM (K-medoids):"), " Mencari medoids yang meminimalkan total jarak"),
+                                   tags$li(strong("DBSCAN:"), " Mengelompokkan observasi dalam radius epsilon tertentu")
+                                 ),
+                                 
+                                 div(style = "background: #e8f4fd; border: 1px solid #91c7ec; border-radius: 5px; padding: 10px; margin: 10px 0;",
+                                     p(strong("💡 ANALOGI SEDERHANA:"), style = "color: #2c5b99; margin: 0;"),
+                                     p("Bayangkan peta jarak antar kota. Distance matrix seperti tabel yang berisi jarak dari setiap kota ke semua kota lainnya. Clustering menggunakan informasi ini untuk mengelompokkan kota-kota yang 'dekat' satu sama lain.", style = "color: #2c5b99; margin: 5px 0;")
+                                 ),
+                                 
                                  h5("Sumber Data"),
                                  tags$ul(
                                    tags$li(strong("URL Data:"), tags$a(href = distance_url, "https://raw.githubusercontent.com/bmlmcmc/naspaclust/main/data/distance.csv", target = "_blank")),
