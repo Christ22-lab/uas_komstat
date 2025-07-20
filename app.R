@@ -1788,6 +1788,46 @@ ui <- dashboardPage(
                                              tags$li("Posisi titik di peta adalah random, bukan lokasi kabupaten sebenarnya"),
                                              tags$li("Fokus analisis pada clustering pattern, bukan distribusi geografis")
                                      )
+                                 ),
+                                 
+                                 # Tambahan: Data Koordinat yang Dibutuhkan
+                                 h5("📍 DATA KOORDINAT YANG DIPERLUKAN UNTUK AKURASI GEOGRAFIS"),
+                                 div(style = "background: #e3f2fd; border: 1px solid #2196f3; border-radius: 5px; padding: 15px; margin: 10px 0;",
+                                     h6(strong("STRUKTUR DATA YANG DIPERLUKAN:")),
+                                     tags$pre(style = "background: #fff; padding: 10px; border-radius: 3px; font-size: 12px;",
+"DISTRICTCODE,County_Name,Latitude,Longitude
+1101,ACEH BESAR,-5.5577,95.4956
+1102,ACEH PIDIE,5.1372,96.1414
+1103,ACEH UTARA,5.0983,97.1972
+1104,ACEH TIMUR,4.6348,97.6451
+...dst untuk 512 kabupaten/kota"
+                                     ),
+                                     
+                                     h6(strong("SUMBER DATA KOORDINAT YANG DIREKOMENDASIKAN:")),
+                                     tags$ul(
+                                       tags$li(strong("BPS (Badan Pusat Statistik):"), " https://sig.bps.go.id/ - Koordinat resmi kabupaten/kota Indonesia"),
+                                       tags$li(strong("Geoportal Indonesia:"), " https://tanahair.indonesia.go.id/ - Shapefile dan data geografis resmi"),
+                                       tags$li(strong("Kemendagri:"), " Data kode dan wilayah administratif Indonesia"),
+                                       tags$li(strong("OpenStreetMap Nominatim:"), " API geocoding untuk nama kabupaten/kota")
+                                     ),
+                                     
+                                     h6(strong("MATCHING REQUIREMENT:")),
+                                     tags$ul(
+                                       tags$li("DISTRICTCODE dalam dataset SOVI: ", strong("4 digit"), " (contoh: 1101, 1102, 1201, dst)"),
+                                       tags$li("Format kode: ", strong("11xx"), " = Aceh, ", strong("12xx"), " = Sumut, ", strong("31xx"), " = DKI Jakarta, dst"),
+                                       tags$li("Total observasi: ", strong("512 kode wilayah"), " sesuai jumlah baris dalam dataset SOVI"),
+                                       tags$li("Referensi: ", strong("Kode BPS Wilkerstat"), " (Wilayah Kerja Statistik) Indonesia")
+                                     ),
+                                     
+                                     div(style = "background: #f8f9fa; border-left: 3px solid #28a745; padding: 10px; margin-top: 10px;",
+                                         p(strong("💡 TIPS PENCARIAN DATA:"), style = "color: #155724; margin: 0;"),
+                                         tags$ul(style = "color: #155724; margin: 5px 0; font-size: 13px;",
+                                                 tags$li("Cari: \"kode wilayah BPS Indonesia coordinates CSV\""),
+                                                 tags$li("GitHub: \"indonesia regency coordinates\", \"kabupaten indonesia lat lon\""),
+                                                 tags$li("API: Google Geocoding atau Nominatim dengan nama kabupaten"),
+                                                 tags$li("Manual: Ekstrak dari Shapefile Indonesia (.shp) menggunakan QGIS/R")
+                                         )
+                                     )
                                  )
                         ),
                         
