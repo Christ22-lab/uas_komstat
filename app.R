@@ -1705,15 +1705,23 @@ ui <- dashboardPage(
                 box(width = 4, title = "Pengaturan Analisis Peta SOVI", status = "primary", solidHeader = TRUE,
                     selectInput("sovi_map_variable", "Pilih Variabel SOVI:",
                                 choices = list(
-                                  "SOVI Score" = "SOVI_Score",
-                                  "Population" = "Population", 
-                                  "Income" = "Income",
-                                  "Education" = "Education",
-                                  "Age 65 Over" = "Age_65_Over",
-                                  "Disability" = "Disability",
-                                  "State" = "State",
-                                  "County" = "County"
-                                ), selected = "SOVI_Score"),
+                                  "Population" = "POPULATION",
+                                  "Children (%)" = "CHILDREN", 
+                                  "Female (%)" = "FEMALE",
+                                  "Elderly (%)" = "ELDERLY",
+                                  "Female Head Family (%)" = "FHEAD",
+                                  "Family Size (avg)" = "FAMILYSIZE",
+                                  "No Electric (%)" = "NOELECTRIC",
+                                  "Low Education (%)" = "LOWEDU",
+                                  "Population Growth (%)" = "GROWTH",
+                                  "Poverty (%)" = "POVERTY",
+                                  "Illiterate (%)" = "ILLITERATE",
+                                  "No Training (%)" = "NOTRAINING",
+                                  "Disaster Prone (%)" = "DPRONE",
+                                  "Rented House (%)" = "RENTED",
+                                  "No Sewer (%)" = "NOSEWER",
+                                  "Tap Water (%)" = "TAPWATER"
+                                ), selected = "POPULATION"),
                     
                     selectInput("sovi_map_type", "Jenis Visualisasi Peta:",
                                 choices = list(
@@ -6071,16 +6079,19 @@ Pastikan variabel yang dipilih adalah numerik.")
               if(is.numeric(var_values[i])) round(var_values[i], 3) else var_values[i], "<br>"
             )
            
-           # Tambah informasi tambahan
-           if ("SOVI_Score" %in% names(data) && selected_var != "SOVI_Score") {
-             popup_info <- paste0(popup_info, "<strong>SOVI Score:</strong> ", round(data$SOVI_Score[i], 3), "<br>")
-           }
-           if ("Population" %in% names(data) && selected_var != "Population") {
-             popup_info <- paste0(popup_info, "<strong>Population:</strong> ", format(data$Population[i], big.mark = ","), "<br>")
-           }
-           if ("Income" %in% names(data) && selected_var != "Income") {
-             popup_info <- paste0(popup_info, "<strong>Income:</strong> $", format(round(data$Income[i]), big.mark = ","), "<br>")
-           }
+                       # Tambah informasi tambahan
+            if ("POPULATION" %in% names(data) && selected_var != "POPULATION") {
+              popup_info <- paste0(popup_info, "<strong>Population:</strong> ", format(data$POPULATION[i], big.mark = ","), "<br>")
+            }
+            if ("POVERTY" %in% names(data) && selected_var != "POVERTY") {
+              popup_info <- paste0(popup_info, "<strong>Poverty:</strong> ", round(data$POVERTY[i], 2), "%<br>")
+            }
+            if ("CHILDREN" %in% names(data) && selected_var != "CHILDREN") {
+              popup_info <- paste0(popup_info, "<strong>Children:</strong> ", round(data$CHILDREN[i], 2), "%<br>")
+            }
+            if ("DISTRICTCODE" %in% names(data)) {
+              popup_info <- paste0(popup_info, "<strong>District Code:</strong> ", data$DISTRICTCODE[i], "<br>")
+            }
            
            popup_info <- paste0(popup_info, 
              "<hr><small><strong>Koordinat:</strong> ", round(data$Latitude[i], 4), ", ", round(data$Longitude[i], 4), "<br>",
@@ -6248,15 +6259,25 @@ Pastikan variabel yang dipilih adalah numerik.")
      
      selected_var <- input$sovi_map_variable
      
-     recommendations <- switch(selected_var,
-       "SOVI_Score" = "Fokus pada area dengan SOVI Score tinggi untuk program mitigasi bencana dan pengurangan kerentanan sosial. Prioritaskan investasi infrastruktur dan program sosial di area dengan kerentanan tinggi.",
-       "Population" = "Area dengan populasi tinggi memerlukan perhatian khusus dalam perencanaan infrastruktur dan layanan publik. Pastikan kapasitas layanan sesuai dengan kepadatan penduduk.",
-       "Income" = "Area dengan pendapatan rendah memerlukan program pemberdayaan ekonomi, pelatihan keterampilan, dan akses ke lapangan kerja. Pertimbangkan program bantuan sosial targeted.",
-       "Education" = "Area dengan tingkat pendidikan rendah memerlukan investasi dalam infrastruktur pendidikan, program literasi, dan peningkatan akses ke pendidikan berkualitas.",
-       "Age_65_Over" = "Area dengan populasi lansia tinggi memerlukan layanan kesehatan geriatri, fasilitas perawatan lansia, dan program perlindungan sosial untuk kelompok rentan.",
-       "Disability" = "Area dengan tingkat disabilitas tinggi memerlukan infrastruktur yang accessible, program rehabilitasi, dan layanan dukungan khusus untuk penyandang disabilitas.",
-       "Rekomendasi umum: Lakukan analisis lebih lanjut untuk memahami pola spasial dan faktor-faktor yang mempengaruhi distribusi variabel ini."
-     )
+           recommendations <- switch(selected_var,
+        "POPULATION" = "Area dengan populasi tinggi memerlukan perencanaan infrastruktur yang memadai, layanan publik yang mencukupi, dan manajemen kepadatan penduduk yang baik.",
+        "CHILDREN" = "Area dengan persentase anak tinggi memerlukan investasi dalam pendidikan, layanan kesehatan anak, fasilitas bermain, dan program perlindungan anak.",
+        "FEMALE" = "Area dengan proporsi perempuan tinggi memerlukan program pemberdayaan perempuan, layanan kesehatan reproduksi, dan perlindungan dari kekerasan berbasis gender.",
+        "ELDERLY" = "Area dengan populasi lansia tinggi memerlukan layanan kesehatan geriatri, fasilitas perawatan lansia, dan program jaminan sosial untuk kelompok rentan.",
+        "FHEAD" = "Area dengan banyak kepala keluarga perempuan memerlukan program pemberdayaan ekonomi perempuan, akses kredit mikro, dan dukungan pengasuhan anak.",
+        "FAMILYSIZE" = "Area dengan ukuran keluarga besar memerlukan program keluarga berencana, layanan kesehatan reproduksi, dan bantuan sosial untuk keluarga besar.",
+        "NOELECTRIC" = "Area tanpa listrik memerlukan prioritas elektrifikasi, program energi terbarukan, dan infrastruktur kelistrikan yang handal.",
+        "LOWEDU" = "Area dengan pendidikan rendah memerlukan program literasi, beasiswa pendidikan, infrastruktur sekolah, dan pelatihan keterampilan vokasional.",
+        "GROWTH" = "Area dengan pertumbuhan populasi tinggi memerlukan perencanaan pembangunan yang adaptif, infrastruktur yang scalable, dan manajemen urbanisasi.",
+        "POVERTY" = "Area dengan kemiskinan tinggi memerlukan program pengentasan kemiskinan, bantuan sosial, pemberdayaan ekonomi, dan penciptaan lapangan kerja.",
+        "ILLITERATE" = "Area dengan buta huruf tinggi memerlukan program literasi dewasa, pendidikan non-formal, dan kampanye pentingnya pendidikan.",
+        "NOTRAINING" = "Area dengan kurang pelatihan memerlukan program pelatihan keterampilan, vocational training, dan pengembangan kapasitas SDM.",
+        "DPRONE" = "Area rawan bencana memerlukan sistem peringatan dini, infrastruktur tahan bencana, dan program kesiapsiagaan masyarakat.",
+        "RENTED" = "Area dengan banyak rumah sewa memerlukan regulasi sewa yang adil, program kepemilikan rumah, dan peningkatan kualitas hunian.",
+        "NOSEWER" = "Area tanpa sistem pembuangan memerlukan infrastruktur sanitasi, program kesehatan lingkungan, dan edukasi hygiene.",
+        "TAPWATER" = "Area dengan akses air bersih tinggi menunjukkan infrastruktur yang baik, pertahankan kualitas dan jangkauan layanan air bersih.",
+        "Lakukan analisis lebih lanjut untuk memahami pola spasial dan faktor-faktor yang mempengaruhi distribusi variabel ini."
+      )
      
      return(recommendations)
    })
