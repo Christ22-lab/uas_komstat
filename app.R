@@ -2560,31 +2560,13 @@ ui <- dashboardPage(
         ),
         
         fluidRow(
-          box(width = 12, title = "Visualisasi Spasial Hasil Clustering", status = "success", solidHeader = TRUE,
-            fluidRow(
-              column(6,
-                h5("Peta Interaktif - Koordinat Riil Indonesia"),
-                p("Distribusi cluster berdasarkan koordinat RIIL kabupaten/kota Indonesia (DISTRICTCODE BPS)"),
-                leafletOutput("cluster_map", height = "400px")
-              ),
-              column(6,
-                h5("Visualisasi Alternatif"),
-                selectInput("map_visualization_type", "Jenis Visualisasi:",
-                  choices = list(
-                    "Scatter Plot (Default)" = "scatter",
-                    "Heatmap Density" = "heatmap", 
-                    "Choropleth Regions" = "choropleth",
-                    "Network Graph" = "network"
-                  ), selected = "scatter"),
-                plotOutput("alternative_viz", height = "350px")
-              )
-            ),
+          box(width = 12, title = "Peta Interaktif Hasil Clustering", status = "success", solidHeader = TRUE,
+            h5("Visualisasi Hasil Clustering dalam Ruang 2D menggunakan MDS (Multidimensional Scaling)"),
+            p("Peta menunjukkan hasil clustering dalam ruang 2D yang diperoleh dari transformasi distance matrix menggunakan MDS. Setiap warna menunjukkan cluster yang berbeda, memberikan visualisasi yang jelas tentang pemisahan antar cluster."),
+            leafletOutput("cluster_map", height = "500px"),
             br(),
-            p(strong("Sumber Koordinat:"), "Database koordinat riil Indonesia berdasarkan DISTRICTCODE BPS yang mencakup seluruh kabupaten/kota di Indonesia."),
-            fluidRow(
-              column(6, downloadButton("download_cluster_map", "Download Peta (PNG)", class = "btn-success")),
-              column(6, downloadButton("download_alternative_viz", "Download Visualisasi (JPG)", class = "btn-info"))
-            )
+            p(strong("Metode Visualisasi:"), "Multidimensional Scaling (MDS) untuk transformasi distance matrix ke koordinat 2D, kemudian dipetakan dalam leaflet untuk interaktivitas."),
+            downloadButton("download_cluster_map", "Download Peta Cluster (PNG)", class = "btn-success")
           )
         ),
         
@@ -5098,7 +5080,7 @@ Pastikan variabel yang dipilih adalah numerik.")
   
     output$cluster_map <- renderLeaflet({
     tryCatch({
-      # PERBAIKAN: Gunakan data clustering yang aktif dan sesuai dengan algoritma
+      # Gunakan data clustering yang aktif dan sesuai dengan algoritma
       data <- values$current_data
       clustering <- values$clustering_result
       
@@ -5106,7 +5088,7 @@ Pastikan variabel yang dipilih adalah numerik.")
       if (is.null(data) || is.null(clustering) || !"Cluster" %in% names(data)) {
         return(leaflet() %>% 
                addTiles() %>% 
-               setView(lng = 118, lat = -2, zoom = 5) %>%
+               setView(lng = 0, lat = 0, zoom = 2) %>%
                addControl(
                  html = "<div style='background: #ffecb3; padding: 10px; border-radius: 5px; border-left: 4px solid #ff9800;'>
                          <strong>⚠️ Belum Ada Clustering</strong><br>
@@ -5118,85 +5100,39 @@ Pastikan variabel yang dipilih adalah numerik.")
       
       # Pastikan ada data untuk di-plot
       if (nrow(data) == 0) {
-        return(leaflet() %>% addTiles() %>% setView(lng = 118, lat = -2, zoom = 5))
+        return(leaflet() %>% addTiles() %>% setView(lng = 0, lat = 0, zoom = 2))
       }
       
-      # PERBAIKAN KOORDINAT: Pastikan menggunakan koordinat riil Indonesia yang akurat
-      if (!"Latitude" %in% names(data) || !"Longitude" %in% names(data) || 
-          any(is.na(data$Latitude)) || any(is.na(data$Longitude))) {
-        
-        # Generate koordinat berdasarkan jumlah data yang sebenarnya
-        n_points <- nrow(data)
-        
-        # Gunakan distribusi geografis Indonesia yang realistis
-        # Fokus pada area dengan populasi tinggi (Jawa, Sumatera, Sulawesi)
-        set.seed(123) # Untuk reproducibility
-        
-        # 40% Jawa, 25% Sumatera, 15% Kalimantan, 10% Sulawesi, 10% lainnya
-        java_count <- round(n_points * 0.4)
-        sumatra_count <- round(n_points * 0.25)
-        kalimantan_count <- round(n_points * 0.15)
-        sulawesi_count <- round(n_points * 0.1)
-        others_count <- n_points - (java_count + sumatra_count + kalimantan_count + sulawesi_count)
-        
-        # Generate koordinat realistis per region
-        coords_list <- list()
-        
-        # Jawa (high density)
-        if (java_count > 0) {
-          coords_list$java <- data.frame(
-            Latitude = runif(java_count, -8.5, -6.0),   # Jawa latitude range
-            Longitude = runif(java_count, 106.0, 114.0)  # Jawa longitude range
-          )
-        }
-        
-        # Sumatera
-        if (sumatra_count > 0) {
-          coords_list$sumatra <- data.frame(
-            Latitude = runif(sumatra_count, -5.5, 5.5),   # Sumatera latitude range
-            Longitude = runif(sumatra_count, 95.0, 106.0)  # Sumatera longitude range
-          )
-        }
-        
-        # Kalimantan
-        if (kalimantan_count > 0) {
-          coords_list$kalimantan <- data.frame(
-            Latitude = runif(kalimantan_count, -4.0, 4.0),   # Kalimantan latitude range
-            Longitude = runif(kalimantan_count, 108.0, 119.0) # Kalimantan longitude range
-          )
-        }
-        
-        # Sulawesi
-        if (sulawesi_count > 0) {
-          coords_list$sulawesi <- data.frame(
-            Latitude = runif(sulawesi_count, -6.0, 2.0),     # Sulawesi latitude range
-            Longitude = runif(sulawesi_count, 119.0, 125.0)  # Sulawesi longitude range
-          )
-        }
-        
-        # Others (Papua, Maluku, NTT, NTB, Bali)
-        if (others_count > 0) {
-          coords_list$others <- data.frame(
-            Latitude = runif(others_count, -9.0, -1.0),     # Eastern Indonesia
-            Longitude = runif(others_count, 125.0, 141.0)   # Eastern Indonesia
-          )
-        }
-        
-        # Combine all coordinates
-        all_coords <- do.call(rbind, coords_list)
-        
-        # Assign to data
-        data$Latitude <- all_coords$Latitude[1:n_points]
-        data$Longitude <- all_coords$Longitude[1:n_points]
+      # GUNAKAN MDS (Multidimensional Scaling) untuk koordinat 2D
+      dist_mat <- as.matrix(distance_matrix)
+      if (ncol(dist_mat) > nrow(dist_mat)) {
+        dist_mat <- dist_mat[, -1]
       }
       
-      lng_coords <- data$Longitude
-      lat_coords <- data$Latitude
+      # Pastikan ukuran distance matrix sesuai dengan data
+      n_data <- nrow(data)
+      if (nrow(dist_mat) > n_data) {
+        dist_mat <- dist_mat[1:n_data, 1:n_data]
+      } else if (nrow(dist_mat) < n_data) {
+        # Jika distance matrix lebih kecil, ambil subset data
+        data <- data[1:nrow(dist_mat), ]
+        n_data <- nrow(data)
+      }
       
-      # Final validation - pastikan tidak ada yang di laut
-      # Adjust coordinates yang terlalu ekstrem
-      lng_coords <- pmax(95, pmin(141, lng_coords))    # Indonesia longitude bounds
-      lat_coords <- pmax(-11, pmin(6, lat_coords))     # Indonesia latitude bounds
+      # Transformasi MDS ke koordinat 2D
+      mds_result <- cmdscale(as.dist(dist_mat), k = 2)
+      
+      # Balik sumbu Y untuk orientasi yang lebih baik
+      mds_result[,2] <- -mds_result[,2]
+      
+      # Normalisasi koordinat MDS ke range yang sesuai untuk peta
+      # Scale ke range yang reasonable untuk visualisasi
+      lng_range <- range(mds_result[,1])
+      lat_range <- range(mds_result[,2])
+      
+      # Normalisasi ke range geografis yang masuk akal
+      lng_coords <- scales::rescale(mds_result[,1], to = c(-10, 10))
+      lat_coords <- scales::rescale(mds_result[,2], to = c(-10, 10))
       
       # Buat color palette untuk clusters
       n_clusters <- length(unique(data$Cluster))
@@ -5206,10 +5142,10 @@ Pastikan variabel yang dipilih adalah numerik.")
         cluster_colors <- rainbow(n_clusters)
       }
       
-      # Buat peta dasar dengan view yang lebih tepat untuk Indonesia
+      # Buat peta dasar dengan view yang sesuai untuk MDS coordinates
       map <- leaflet() %>%
         addProviderTiles(providers$OpenStreetMap) %>%
-        setView(lng = 118, lat = -2, zoom = 5)
+        setView(lng = 0, lat = 0, zoom = 3)
       
       # Plot titik untuk setiap cluster dengan info yang lebih detail
       for (i in 1:n_clusters) {
@@ -5225,22 +5161,6 @@ Pastikan variabel yang dipilih adalah numerik.")
               "<strong style='color: ", cluster_colors[i], "; font-size: 16px;'>Cluster ", i, "</strong><br>",
               "<strong>Observasi #", idx, "</strong><br><hr>"
             )
-            
-            # Tambah informasi geografis
-            if ("County" %in% names(data)) {
-              popup_info <- paste0(popup_info, 
-                "<strong>Area:</strong> ", data$County[idx], "<br>")
-            }
-            
-            if ("State" %in% names(data)) {
-              popup_info <- paste0(popup_info, 
-                "<strong>Provinsi:</strong> ", data$State[idx], "<br>")
-            }
-            
-            if ("DISTRICTCODE" %in% names(data)) {
-              popup_info <- paste0(popup_info, 
-                "<strong>Kode BPS:</strong> ", data$DISTRICTCODE[idx], "<br>")
-            }
             
             # Tambah informasi SOVI jika tersedia
             if ("SOVI_Score" %in% names(data)) {
@@ -5258,9 +5178,14 @@ Pastikan variabel yang dipilih adalah numerik.")
                 "<strong>Pendapatan:</strong> $", format(round(data$Income[idx]), big.mark = ","), "<br>")
             }
             
+            if ("Education" %in% names(data)) {
+              popup_info <- paste0(popup_info, 
+                "<strong>Pendidikan:</strong> ", round(data$Education[idx], 1), "%<br>")
+            }
+            
             popup_info <- paste0(popup_info, 
-              "<hr><small><strong>Koordinat:</strong> ", round(lat_coords[idx], 4), ", ", round(lng_coords[idx], 4), "<br>",
-              "<em>Berdasarkan database DISTRICTCODE BPS</em></small>",
+              "<hr><small><strong>MDS Koordinat:</strong> (", round(lng_coords[idx], 3), ", ", round(lat_coords[idx], 3), ")<br>",
+              "<em>Posisi berdasarkan Multidimensional Scaling</em></small>",
               "</div>")
             
             popup_content[j] <- popup_info
@@ -5298,36 +5223,36 @@ Pastikan variabel yang dipilih adalah numerik.")
         legend_labels[i] <- paste0("Cluster ", i, " (", count, " obs, ", percentage, "%)")
       }
       
-      map <- map %>%
-        addLegend(
-          "bottomright",
-          colors = legend_colors,
-          labels = legend_labels,
-          title = "<strong>Hasil Clustering</strong>",
-          opacity = 1,
-          className = "info legend"
-        ) %>%
-        addControl(
-          html = paste0(
-            "<div style='background: rgba(255,255,255,0.95); padding: 10px; border-radius: 8px; border: 2px solid #4CAF50; box-shadow: 0 2px 10px rgba(0,0,0,0.1);'>",
-            "<h4 style='margin: 0 0 8px 0; color: #2E7D32;'><i class='fa fa-map-marker'></i> Koordinat Indonesia</h4>",
-            "<p style='margin: 0; font-size: 13px; line-height: 1.4;'>",
-            "<strong>Sumber:</strong> Database BPS (DISTRICTCODE)<br>",
-            "<strong>Coverage:</strong> Seluruh Kabupaten/Kota Indonesia<br>",
-            "<strong>Akurasi:</strong> Koordinat geografis riil",
-            "</p>",
-            "</div>"
-          ),
-          position = "topleft"
-        ) %>%
-        addControl(
-          html = paste0(
-            "<div style='background: rgba(33,150,243,0.95); color: white; padding: 8px 12px; border-radius: 6px; font-weight: bold;'>",
-            "<i class='fa fa-info-circle'></i> Klik marker untuk detail cluster",
-            "</div>"
-          ),
-          position = "topright"
-        )
+              map <- map %>%
+          addLegend(
+            "bottomright",
+            colors = legend_colors,
+            labels = legend_labels,
+            title = "<strong>Hasil Clustering</strong>",
+            opacity = 1,
+            className = "info legend"
+          ) %>%
+          addControl(
+            html = paste0(
+              "<div style='background: rgba(255,255,255,0.95); padding: 10px; border-radius: 8px; border: 2px solid #673AB7; box-shadow: 0 2px 10px rgba(0,0,0,0.1);'>",
+              "<h4 style='margin: 0 0 8px 0; color: #673AB7;'><i class='fa fa-project-diagram'></i> MDS Visualization</h4>",
+              "<p style='margin: 0; font-size: 13px; line-height: 1.4;'>",
+              "<strong>Metode:</strong> Multidimensional Scaling<br>",
+              "<strong>Input:</strong> Distance Matrix<br>",
+              "<strong>Output:</strong> Koordinat 2D untuk visualisasi",
+              "</p>",
+              "</div>"
+            ),
+            position = "topleft"
+          ) %>%
+          addControl(
+            html = paste0(
+              "<div style='background: rgba(33,150,243,0.95); color: white; padding: 8px 12px; border-radius: 6px; font-weight: bold;'>",
+              "<i class='fa fa-info-circle'></i> Klik marker untuk detail cluster",
+              "</div>"
+            ),
+            position = "topright"
+          )
       
               return(map)
         
@@ -5349,116 +5274,7 @@ Pastikan variabel yang dipilih adalah numerik.")
     })
   })
   
-  # Visualisasi alternatif untuk clustering
-  output$alternative_viz <- renderPlot({
-    if (is.null(values$clustering_result) || is.null(values$current_data)) {
-      plot(1, 1, type = "n", xlab = "", ylab = "", main = "Jalankan clustering terlebih dahulu")
-      text(1, 1, "⚠️ Belum ada hasil clustering\nSilakan jalankan clustering terlebih dahulu", cex = 1.2, col = "gray50")
-      return()
-    }
-    
-    data <- values$current_data
-    viz_type <- input$map_visualization_type
-    
-    if (viz_type == "scatter") {
-      # Scatter plot dengan koordinat geografis
-      if ("Latitude" %in% names(data) && "Longitude" %in% names(data)) {
-        plot(data$Longitude, data$Latitude, 
-             col = rainbow(max(as.numeric(data$Cluster)))[as.numeric(data$Cluster)],
-             pch = 16, cex = 1.5,
-             main = "Scatter Plot - Distribusi Geografis Cluster",
-             xlab = "Longitude", ylab = "Latitude")
-        legend("topright", 
-               legend = paste("Cluster", 1:max(as.numeric(data$Cluster))),
-               col = rainbow(max(as.numeric(data$Cluster))), 
-               pch = 16, cex = 0.8)
-      }
-      
-    } else if (viz_type == "heatmap") {
-      # Heatmap density plot
-      if ("Latitude" %in% names(data) && "Longitude" %in% names(data)) {
-        library(ggplot2)
-        p <- ggplot(data, aes(x = Longitude, y = Latitude, fill = Cluster)) +
-          stat_density_2d_filled(alpha = 0.7) +
-          geom_point(aes(color = Cluster), size = 2, alpha = 0.8) +
-          scale_fill_viridis_d(name = "Density") +
-          scale_color_viridis_d(name = "Cluster") +
-          labs(title = "Heatmap Density - Distribusi Cluster",
-               x = "Longitude", y = "Latitude") +
-          theme_minimal()
-        print(p)
-      }
-      
-    } else if (viz_type == "choropleth") {
-      # Choropleth-style visualization
-      if ("Latitude" %in% names(data) && "Longitude" %in% names(data)) {
-        # Create grid untuk choropleth effect
-        lat_breaks <- seq(min(data$Latitude, na.rm = TRUE), max(data$Latitude, na.rm = TRUE), length.out = 10)
-        lon_breaks <- seq(min(data$Longitude, na.rm = TRUE), max(data$Longitude, na.rm = TRUE), length.out = 10)
-        
-        data$lat_bin <- cut(data$Latitude, breaks = lat_breaks)
-        data$lon_bin <- cut(data$Longitude, breaks = lon_breaks)
-        
-        # Count clusters per grid cell
-        grid_summary <- aggregate(as.numeric(data$Cluster), 
-                                by = list(data$lat_bin, data$lon_bin), 
-                                FUN = function(x) names(sort(table(x), decreasing = TRUE))[1])
-        
-        # Create choropleth-style plot
-        library(ggplot2)
-        p <- ggplot(data, aes(x = Longitude, y = Latitude)) +
-          geom_bin2d(bins = 8, alpha = 0.6) +
-          geom_point(aes(color = Cluster), size = 2, alpha = 0.8) +
-          scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Count") +
-          scale_color_viridis_d(name = "Cluster") +
-          labs(title = "Choropleth-style - Regional Cluster Distribution",
-               x = "Longitude", y = "Latitude") +
-          theme_minimal()
-        print(p)
-      }
-      
-    } else if (viz_type == "network") {
-      # Network graph visualization
-      if (!is.null(values$clustering_result)) {
-        # Create network based on distance matrix
-        dist_mat <- as.matrix(distance_matrix)
-        if (ncol(dist_mat) > nrow(dist_mat)) {
-          dist_mat <- dist_mat[, -1]
-        }
-        
-        # Use only subset for network (too many points = messy)
-        n_sample <- min(50, nrow(dist_mat))
-        sample_idx <- sample(1:nrow(dist_mat), n_sample)
-        dist_subset <- dist_mat[sample_idx, sample_idx]
-        
-        # Create adjacency matrix (connect close points)
-        threshold <- quantile(dist_subset[upper.tri(dist_subset)], 0.1) # Connect closest 10%
-        adj_mat <- dist_subset < threshold
-        diag(adj_mat) <- FALSE
-        
-        # Simple network plot
-        library(igraph)
-        g <- graph_from_adjacency_matrix(adj_mat, mode = "undirected")
-        
-        cluster_colors <- rainbow(max(as.numeric(data$Cluster)))
-        vertex_colors <- cluster_colors[as.numeric(data$Cluster)[sample_idx]]
-        
-        plot(g, 
-             vertex.color = vertex_colors,
-             vertex.size = 8,
-             vertex.label = NA,
-             edge.color = "gray70",
-             edge.width = 0.5,
-             layout = layout_with_fr,
-             main = "Network Graph - Cluster Connectivity")
-        
-        legend("topright", 
-               legend = paste("Cluster", 1:max(as.numeric(data$Cluster))),
-               col = cluster_colors, 
-               pch = 16, cex = 0.8)
-      }
-    }
-  })
+
   
   output$cluster_table <- DT::renderDataTable({
     data <- values$current_data
@@ -5629,35 +5445,7 @@ Pastikan variabel yang dipilih adalah numerik.")
     }
   })
   
-     # Download handler untuk visualisasi alternatif
-   output$download_alternative_viz <- downloadHandler(
-     filename = function() { paste0("alternative_viz_", input$map_visualization_type, "_", Sys.Date(), ".jpg") },
-     content = function(file) {
-       jpeg(file, width = 800, height = 600, quality = 95)
-       
-       if (!is.null(values$clustering_result) && !is.null(values$current_data)) {
-         data <- values$current_data
-         viz_type <- input$map_visualization_type
-         
-         if (viz_type == "scatter") {
-           plot(data$Longitude, data$Latitude, 
-                col = rainbow(max(as.numeric(data$Cluster)))[as.numeric(data$Cluster)],
-                pch = 16, cex = 1.5,
-                main = "Scatter Plot - Distribusi Geografis Cluster",
-                xlab = "Longitude", ylab = "Latitude")
-           legend("topright", 
-                  legend = paste("Cluster", 1:max(as.numeric(data$Cluster))),
-                  col = rainbow(max(as.numeric(data$Cluster))), 
-                  pch = 16, cex = 0.8)
-         } else {
-           plot(1, 1, type = "n", main = paste("Visualisasi", viz_type, "tersimpan"))
-           text(1, 1, paste("✓ Visualisasi", viz_type, "berhasil disimpan"), cex = 1.5)
-         }
-       }
-       
-       dev.off()
-     }
-   )
+     
    
    # Download handlers untuk clustering
    output$download_clustering_plot <- downloadHandler(
