@@ -2094,6 +2094,103 @@ ui <- dashboardPage(
                                  )
                         ),
                         
+                        hr(),
+                        
+                        # KOORDINAT GEOGRAFIS
+                        h4("🗺️ Data Koordinat Geografis (Latitude & Longitude)", style = "color: #ff6b35; margin-top: 20px;"),
+                        tags$div(class = "info-box", style = "border-left: 4px solid #ff6b35; background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);",
+                                 
+                                 div(style = "background: #ffebee; border: 2px solid #f44336; border-radius: 8px; padding: 15px; margin: 10px 0;",
+                                     h5(strong("⚠️ PERINGATAN: KOORDINAT BELUM SESUAI"), style = "color: #d32f2f; margin-top: 0;"),
+                                     tags$ul(style = "color: #d32f2f; margin: 5px 0;",
+                                             tags$li(strong("Dataset SOVI asli TIDAK memiliki koordinat geografis")),
+                                             tags$li(strong("Koordinat yang ditampilkan saat ini TIDAK AKURAT")),
+                                             tags$li(strong("Posisi titik di peta TIDAK sesuai dengan lokasi kabupaten/kota sebenarnya")),
+                                             tags$li(strong("Diperlukan data koordinat riil untuk analisis spasial yang valid"))
+                                     )
+                                 ),
+                                 
+                                 h5("Status Koordinat Saat Ini"),
+                                 tags$ul(
+                                   tags$li(strong("Sumber Koordinat:"), " Sistem otomatis berdasarkan DISTRICTCODE"),
+                                   tags$li(strong("Metode:"), " Agregasi centroid dari data desa (Village_LongLat_Approx.csv)"),
+                                   tags$li(strong("Database:"), tags$a(href = "https://github.com/coll-j/indonesia-locations-data", "indonesia-locations-data", target = "_blank")),
+                                   tags$li(strong("Fallback:"), " Koordinat random dalam batas provinsi"),
+                                   tags$li(strong("Akurasi:"), " RENDAH - Banyak titik tidak sesuai lokasi sebenarnya")
+                                 ),
+                                 
+                                 h5("Masalah Koordinat yang Diidentifikasi"),
+                                 tags$ol(
+                                   tags$li(strong("Matching Error:"), " DISTRICTCODE tidak selalu match dengan database koordinat"),
+                                   tags$li(strong("Centroid Bias:"), " Centroid desa tidak selalu representatif untuk kabupaten"),
+                                   tags$li(strong("Missing Data:"), " Beberapa kabupaten tidak ditemukan dalam database"),
+                                   tags$li(strong("Random Fallback:"), " Koordinat fallback menggunakan distribusi random dalam batas provinsi"),
+                                   tags$li(strong("Spatial Accuracy:"), " Titik-titik sering muncul di laut atau lokasi yang salah")
+                                 ),
+                                 
+                                 h5("Sumber Data Koordinat yang Digunakan"),
+                                 div(class = "variable-table",
+                                   tags$table(class = "table table-striped table-bordered", style = "font-size: 11px;",
+                                     tags$thead(
+                                       tags$tr(
+                                         tags$th("Sumber Data"),
+                                         tags$th("URL/Repository"),
+                                         tags$th("Metode Penggunaan"),
+                                         tags$th("Status Akurasi")
+                                       )
+                                     ),
+                                     tags$tbody(
+                                       tags$tr(
+                                         tags$td("Village_LongLat_Approx.csv"),
+                                         tags$td(tags$a(href = "https://github.com/coll-j/indonesia-locations-data/blob/main/Village_LongLat_Approx.csv", "GitHub Link", target = "_blank")),
+                                         tags$td("Agregasi centroid desa ke kabupaten"),
+                                         tags$td(tags$span("RENDAH", style = "color: #f44336; font-weight: bold;"))
+                                       ),
+                                       tags$tr(
+                                         tags$td("kota_kab.csv"),
+                                         tags$td(tags$a(href = "https://github.com/coll-j/indonesia-locations-data/blob/main/kota_kab.csv", "GitHub Link", target = "_blank")),
+                                         tags$td("Mapping nama kabupaten ke ID"),
+                                         tags$td(tags$span("SEDANG", style = "color: #ff9800; font-weight: bold;"))
+                                       ),
+                                       tags$tr(
+                                         tags$td("GeoJSON Indonesia"),
+                                         tags$td(tags$a(href = "https://github.com/rizkitirta/GEO-JSON-INDONESIAN-REGION", "GitHub Link", target = "_blank")),
+                                         tags$td("Polygon boundaries (untuk clustering map)"),
+                                         tags$td(tags$span("TINGGI", style = "color: #4caf50; font-weight: bold;"))
+                                       ),
+                                       tags$tr(
+                                         tags$td("Provincial Boundaries"),
+                                         tags$td("Hardcoded dalam sistem"),
+                                         tags$td("Fallback random dalam batas provinsi"),
+                                         tags$td(tags$span("SANGAT RENDAH", style = "color: #d32f2f; font-weight: bold;"))
+                                       )
+                                     )
+                                   )
+                                 ),
+                                 
+                                 h5("Rekomendasi Perbaikan Koordinat"),
+                                 div(style = "background: #e8f5e8; border: 1px solid #4caf50; border-radius: 5px; padding: 10px; margin: 10px 0;",
+                                     h6(strong("📍 SOLUSI YANG DIREKOMENDASIKAN:")),
+                                     tags$ol(
+                                       tags$li(strong("BPS Shapefile:"), " Download shapefile resmi kabupaten Indonesia dari BPS"),
+                                       tags$li(strong("Nominatim API:"), " Geocoding otomatis nama kabupaten menggunakan OpenStreetMap"),
+                                       tags$li(strong("Google Geocoding API:"), " Koordinat presisi tinggi untuk setiap kabupaten"),
+                                       tags$li(strong("Manual Verification:"), " Verifikasi manual koordinat untuk 514 kabupaten/kota"),
+                                       tags$li(strong("Database Update:"), " Buat database koordinat yang akurat dan terverifikasi")
+                                     )
+                                 ),
+                                 
+                                 div(style = "background: #fff3e0; border: 1px solid #ff9800; border-radius: 5px; padding: 10px; margin: 10px 0;",
+                                     p(strong("💡 DAMPAK KOORDINAT TIDAK AKURAT:"), style = "color: #e65100; margin: 0;"),
+                                     tags$ul(style = "color: #e65100; margin: 5px 0;",
+                                             tags$li("Analisis spasial clustering menjadi tidak meaningful"),
+                                             tags$li("Interpretasi geografis hasil clustering salah"),
+                                             tags$li("Visualisasi peta menyesatkan untuk decision making"),
+                                             tags$li("Penelitian berbasis lokasi menjadi tidak valid")
+                                     )
+                                 )
+                        ),
+                        
                         # PENTING: Koordinat Geografis  
                         h4("✅ UPDATE: Koordinat Riil Indonesia Terintegrasi", style = "color: #2e7d32; margin-top: 30px;"),
                         tags$div(class = "info-box", style = "border-left: 4px solid #4caf50; background: linear-gradient(135deg, #f1f8e9 0%, #c8e6c9 100%);",
@@ -2178,8 +2275,8 @@ ui <- dashboardPage(
                         
                         hr(),
                         
-                        # Dataset 2: Distance Matrix
-                        h4("Dataset 2: Distance Matrix", style = "color: #764ba2; margin-top: 30px;"),
+                        # DATASET 2: DISTANCE MATRIX
+                        h4("📐 Dataset 2: Distance Matrix", style = "color: #764ba2; margin-top: 30px;"),
                         tags$div(class = "info-box", style = "border-left: 4px solid #764ba2; background: linear-gradient(135deg, #faf8ff 0%, #f3f0ff 100%);",
                                  
                                  h5("APA ITU DISTANCE MATRIX?"),
@@ -2444,8 +2541,192 @@ ui <- dashboardPage(
                                  )
                         ),
                         
+                        # KEGIATAN STATISTIK YANG DIGUNAKAN
+                        h4("📈 Kegiatan Statistik dan Analisis dalam Dashboard", style = "color: #6366f1; margin-top: 30px;"),
+                        tags$div(class = "info-box", style = "border-left: 4px solid #6366f1; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);",
+                                 
+                                 h5("1. Statistik Deskriptif"),
+                                 div(style = "background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 5px; padding: 10px; margin: 10px 0;",
+                                     h6("Ukuran Pemusatan dan Penyebaran:"),
+                                     tags$ul(
+                                       tags$li(strong("Mean (Rata-rata):"), " Nilai tengah distribusi setiap variabel SOVI"),
+                                       tags$li(strong("Median:"), " Nilai tengah data yang telah diurutkan"),
+                                       tags$li(strong("Standard Deviation:"), " Ukuran penyebaran data dari rata-rata"),
+                                       tags$li(strong("Minimum & Maximum:"), " Nilai terkecil dan terbesar"),
+                                       tags$li(strong("Quartiles (Q1, Q3):"), " Pembagian data menjadi 4 bagian sama besar")
+                                     ),
+                                     h6("Implementasi dalam Dashboard:"),
+                                     tags$ul(
+                                       tags$li("Tabel summary statistics untuk semua variabel SOVI"),
+                                       tags$li("Visualisasi distribusi dengan histogram dan box plot"),
+                                       tags$li("Identifikasi outliers dan nilai ekstrem")
+                                     )
+                                 ),
+                                 
+                                 h5("2. Analisis Korelasi"),
+                                 div(style = "background: #f0fdf4; border: 1px solid #86efac; border-radius: 5px; padding: 10px; margin: 10px 0;",
+                                     h6("Correlation Matrix Analysis:"),
+                                     tags$ul(
+                                       tags$li(strong("Pearson Correlation:"), " Mengukur hubungan linear antar variabel SOVI"),
+                                       tags$li(strong("Correlation Heatmap:"), " Visualisasi matriks korelasi dengan color coding"),
+                                       tags$li(strong("Multicollinearity Detection:"), " Identifikasi variabel yang saling berkorelasi tinggi")
+                                     ),
+                                     h6("Interpretasi Korelasi:"),
+                                     tags$ul(
+                                       tags$li("r > 0.7: Korelasi positif kuat"),
+                                       tags$li("r < -0.7: Korelasi negatif kuat"),
+                                       tags$li("-0.3 < r < 0.3: Korelasi lemah"),
+                                       tags$li("Identifikasi pola hubungan antar indikator kerentanan")
+                                     )
+                                 ),
+                                 
+                                 h5("3. Analisis Clustering (Unsupervised Learning)"),
+                                 div(style = "background: #fef3c7; border: 1px solid #fbbf24; border-radius: 5px; padding: 10px; margin: 10px 0;",
+                                     h6("Algoritma Clustering yang Diimplementasi:"),
+                                     tags$ul(
+                                       tags$li(strong("K-Means Clustering:"), " Partitioning method berdasarkan centroid"),
+                                       tags$li(strong("Hierarchical Clustering:"), " Agglomerative clustering dengan Ward linkage"),
+                                       tags$li(strong("PAM (K-Medoids):"), " Partitioning Around Medoids, robust terhadap outliers"),
+                                       tags$li(strong("DBSCAN:"), " Density-based clustering untuk deteksi outliers")
+                                     ),
+                                     h6("Input Data untuk Clustering:"),
+                                     tags$ul(
+                                       tags$li("Distance Matrix (512×512) untuk clustering berbasis dissimilarity"),
+                                       tags$li("SOVI Variables untuk clustering berbasis karakteristik langsung"),
+                                       tags$li("Standardisasi data untuk menghindari bias skala variabel")
+                                     ),
+                                     h6("Validasi dan Evaluasi Cluster:"),
+                                     tags$ul(
+                                       tags$li(strong("Silhouette Analysis:"), " Mengukur kualitas clustering"),
+                                       tags$li(strong("Within-cluster Sum of Squares:"), " Mengukur compactness cluster"),
+                                       tags$li(strong("Elbow Method:"), " Menentukan jumlah cluster optimal")
+                                     )
+                                 ),
+                                 
+                                 h5("4. Analisis Spasial (Spatial Statistics)"),
+                                 div(style = "background: #fdf2f8; border: 1px solid #f472b6; border-radius: 5px; padding: 10px; margin: 10px 0;",
+                                     h6("Teknik Analisis Spasial:"),
+                                     tags$ul(
+                                       tags$li(strong("Spatial Clustering:"), " Pengelompokan berdasarkan kedekatan geografis dan karakteristik"),
+                                       tags$li(strong("Hotspot Analysis:"), " Identifikasi area dengan konsentrasi nilai tinggi/rendah"),
+                                       tags$li(strong("Geographic Visualization:"), " Pemetaan hasil clustering di peta Indonesia"),
+                                       tags$li(strong("Coordinate Mapping:"), " Transformasi DISTRICTCODE ke koordinat geografis")
+                                     ),
+                                     h6("Sistem Koordinat:"),
+                                     tags$ul(
+                                       tags$li("WGS84 Geographic Coordinate System"),
+                                       tags$li("Latitude: -11° to 6° (Indonesia bounds)"),
+                                       tags$li("Longitude: 95° to 141° (Indonesia bounds)"),
+                                       tags$li("Proyeksi Web Mercator untuk visualisasi")
+                                     )
+                                 ),
+                                 
+                                 h5("5. Dimensionality Reduction"),
+                                 div(style = "background: #f0f4ff; border: 1px solid #8b5cf6; border-radius: 5px; padding: 10px; margin: 10px 0;",
+                                     h6("Principal Component Analysis (PCA):"),
+                                     tags$ul(
+                                       tags$li(strong("4 Komponen Utama SOVI:"), " Reduksi dari 16 variabel menjadi 4 faktor"),
+                                       tags$li(strong("Variance Explained:"), " Proporsi varians yang dijelaskan setiap komponen"),
+                                       tags$li(strong("Component Loading:"), " Kontribusi setiap variabel terhadap komponen"),
+                                       tags$li(strong("Scree Plot:"), " Visualisasi eigenvalues untuk menentukan jumlah komponen")
+                                     ),
+                                     h6("Multidimensional Scaling (MDS):"),
+                                     tags$ul(
+                                       tags$li(strong("Classical MDS:"), " Proyeksi distance matrix ke ruang 2D"),
+                                       tags$li(strong("Stress Function:"), " Mengukur kualitas proyeksi MDS"),
+                                       tags$li(strong("Geographic Pattern:"), " Hasil MDS yang menyerupai peta Indonesia")
+                                     )
+                                 ),
+                                 
+                                 h5("6. Statistical Testing dan Validation"),
+                                 div(style = "background: #ecfdf5; border: 1px solid #10b981; border-radius: 5px; padding: 10px; margin: 10px 0;",
+                                     h6("Uji Normalitas:"),
+                                     tags$ul(
+                                       tags$li(strong("Shapiro-Wilk Test:"), " Uji normalitas untuk sampel kecil"),
+                                       tags$li(strong("Kolmogorov-Smirnov Test:"), " Uji normalitas untuk sampel besar"),
+                                       tags$li(strong("Anderson-Darling Test:"), " Uji normalitas yang sensitif terhadap tail"),
+                                       tags$li(strong("Q-Q Plot:"), " Visualisasi distribusi vs distribusi normal")
+                                     ),
+                                     h6("Uji Homogenitas:"),
+                                     tags$ul(
+                                       tags$li(strong("Levene's Test:"), " Uji kesamaan varians antar kelompok"),
+                                       tags$li(strong("Bartlett's Test:"), " Uji homogenitas varians (asumsi normalitas)"),
+                                       tags$li(strong("Fligner-Killeen Test:"), " Uji non-parametrik untuk homogenitas")
+                                     )
+                                 ),
+                                 
+                                 h5("7. Inferential Statistics"),
+                                 div(style = "background: #fef7ff; border: 1px solid #d946ef; border-radius: 5px; padding: 10px; margin: 10px 0;",
+                                     h6("Uji Beda Rata-rata:"),
+                                     tags$ul(
+                                       tags$li(strong("One Sample t-test:"), " Membandingkan rata-rata sampel dengan nilai populasi"),
+                                       tags$li(strong("Independent t-test:"), " Membandingkan rata-rata 2 kelompok independen"),
+                                       tags$li(strong("Paired t-test:"), " Membandingkan rata-rata 2 pengukuran berpasangan"),
+                                       tags$li(strong("Mann-Whitney U Test:"), " Uji non-parametrik untuk 2 kelompok independen")
+                                     ),
+                                     h6("Analysis of Variance (ANOVA):"),
+                                     tags$ul(
+                                       tags$li(strong("One-way ANOVA:"), " Membandingkan rata-rata lebih dari 2 kelompok"),
+                                       tags$li(strong("Kruskal-Wallis Test:"), " ANOVA non-parametrik"),
+                                       tags$li(strong("Post-hoc Tests:"), " Tukey HSD, Bonferroni untuk multiple comparison"),
+                                       tags$li(strong("Effect Size:"), " Eta-squared untuk mengukur besar efek")
+                                     )
+                                 ),
+                                 
+                                 h5("8. Regression Analysis"),
+                                 div(style = "background: #fffbeb; border: 1px solid #f59e0b; border-radius: 5px; padding: 10px; margin: 10px 0;",
+                                     h6("Linear Regression:"),
+                                     tags$ul(
+                                       tags$li(strong("Simple Linear Regression:"), " Hubungan 1 prediktor dengan 1 outcome"),
+                                       tags$li(strong("Multiple Linear Regression:"), " Hubungan multiple predictors dengan 1 outcome"),
+                                       tags$li(strong("Polynomial Regression:"), " Hubungan non-linear dengan transformasi polynomial"),
+                                       tags$li(strong("Stepwise Regression:"), " Seleksi variabel otomatis (forward/backward)")
+                                     ),
+                                     h6("Model Diagnostics:"),
+                                     tags$ul(
+                                       tags$li(strong("R-squared:"), " Proporsi varians yang dijelaskan model"),
+                                       tags$li(strong("Adjusted R-squared:"), " R-squared yang disesuaikan dengan jumlah prediktor"),
+                                       tags$li(strong("F-statistic:"), " Uji signifikansi model secara keseluruhan"),
+                                       tags$li(strong("Residual Analysis:"), " Analisis sisa untuk validasi asumsi"),
+                                       tags$li(strong("Cook's Distance:"), " Deteksi influential observations"),
+                                       tags$li(strong("VIF (Variance Inflation Factor):"), " Deteksi multicollinearity")
+                                     )
+                                 ),
+                                 
+                                 h5("9. Data Visualization dan Interactive Graphics"),
+                                 div(style = "background: #f1f5f9; border: 1px solid #64748b; border-radius: 5px; padding: 10px; margin: 10px 0;",
+                                     h6("Static Visualizations (ggplot2):"),
+                                     tags$ul(
+                                       tags$li(strong("Scatter Plots:"), " Hubungan antar variabel numerik"),
+                                       tags$li(strong("Box Plots:"), " Distribusi dan outlier detection"),
+                                       tags$li(strong("Histograms:"), " Distribusi frekuensi variabel"),
+                                       tags$li(strong("Correlation Heatmaps:"), " Matriks korelasi dengan color coding"),
+                                       tags$li(strong("Cluster Dendrograms:"), " Visualisasi hierarchical clustering"),
+                                       tags$li(strong("PCA Biplots:"), " Visualisasi hasil PCA dengan loading vectors")
+                                     ),
+                                     h6("Interactive Visualizations (Plotly):"),
+                                     tags$ul(
+                                       tags$li(strong("Interactive Scatter:"), " Zoom, pan, hover information"),
+                                       tags$li(strong("3D Plots:"), " Visualisasi multidimensional"),
+                                       tags$li(strong("Plotly Dashboard:"), " Interactive statistical dashboard")
+                                     ),
+                                     h6("Geographic Visualizations (Leaflet):"),
+                                     tags$ul(
+                                       tags$li(strong("Interactive Maps:"), " Peta Indonesia dengan zoom dan pan"),
+                                       tags$li(strong("Choropleth Maps:"), " Peta tematik berdasarkan nilai variabel"),
+                                       tags$li(strong("Cluster Maps:"), " Visualisasi hasil clustering di peta"),
+                                       tags$li(strong("Marker Clustering:"), " Pengelompokan marker untuk performa"),
+                                       tags$li(strong("Popup Information:"), " Detail informasi kabupaten/kota"),
+                                       tags$li(strong("Layer Control:"), " Toggle visibility berbagai layer peta"),
+                                       tags$li(strong("GeoJSON Integration:"), " Polygon boundaries untuk visualisasi akurat")
+                                     )
+                                 )
+                        ),
+                        
+                        hr(),
+                        
                         # Cara Penggunaan Dashboard
-                        h4("Panduan Penggunaan Dashboard", style = "color: #4299e1; margin-top: 30px;"),
+                        h4("📖 Panduan Penggunaan Dashboard", style = "color: #4299e1; margin-top: 30px;"),
                         tags$div(class = "info-box", style = "border-left: 4px solid #4299e1; background: linear-gradient(135deg, #f7fafc 0%, #e2e8f0 100%);",
                                  h5("Langkah-langkah Analisis"),
                                  tags$ol(
