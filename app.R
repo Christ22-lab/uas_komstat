@@ -4805,7 +4805,7 @@ server <- function(input, output, session) {
           tryCatch({
             homo_test <- car::ncvTest(reg_model)
           }, error = function(e) {
-            homo_test <<- list(ChiSquare = NA, p = NA)
+            homo_test <- list(ChiSquare = NA, p = NA)
           })
           
           # VIF calculation
