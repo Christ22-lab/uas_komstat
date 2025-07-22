@@ -1710,7 +1710,9 @@ ui <- dashboardPage(
                                   "Income" = "Income",
                                   "Education" = "Education",
                                   "Age 65 Over" = "Age_65_Over",
-                                  "Disability" = "Disability"
+                                  "Disability" = "Disability",
+                                  "State" = "State",
+                                  "County" = "County"
                                 ), selected = "SOVI_Score"),
                     
                     selectInput("sovi_map_type", "Jenis Visualisasi Peta:",
@@ -6005,54 +6007,69 @@ Pastikan variabel yang dipilih adalah numerik.")
                   addControl(html = "Variabel tidak ditemukan dalam data", position = "topright"))
          }
          
-         var_values <- data[[selected_var]]
-         
-         # Buat peta dasar
-         map <- leaflet() %>%
-           addProviderTiles(providers$OpenStreetMap) %>%
-           setView(lng = 118, lat = -2, zoom = 5)
-         
-         # Tentukan warna berdasarkan jenis visualisasi
-         if (input$sovi_map_type == "heatmap") {
-           # Gradient color palette
-           pal <- colorNumeric(palette = "RdYlBu", domain = var_values, reverse = TRUE)
-           colors <- pal(var_values)
+                   var_values <- data[[selected_var]]
+          
+          # Buat peta dasar
+          map <- leaflet() %>%
+            addProviderTiles(providers$OpenStreetMap) %>%
+            setView(lng = 118, lat = -2, zoom = 5)
+          
+          # Cek apakah variabel numerik atau kategorik
+          is_numeric <- is.numeric(var_values)
+          
+          # Tentukan warna berdasarkan jenis visualisasi
+          if (input$sovi_map_type == "heatmap" && is_numeric) {
+            # Gradient color palette untuk variabel numerik
+            pal <- colorNumeric(palette = "RdYlBu", domain = var_values, reverse = TRUE)
+            colors <- pal(var_values)
+            
+                    } else if (input$sovi_map_type == "categorical" || !is_numeric) {
+            # Categorical color palette
+            if (is_numeric) {
+              # Untuk variabel numerik, buat kategori berdasarkan quantiles
+              n_cat <- as.numeric(input$sovi_categories)
+              var_quantiles <- quantile(var_values, probs = seq(0, 1, length.out = n_cat + 1), na.rm = TRUE)
+              var_categories <- cut(var_values, breaks = var_quantiles, include.lowest = TRUE, 
+                                   labels = if(n_cat == 3) c("Rendah", "Sedang", "Tinggi") else paste("Q", 1:n_cat, sep=""))
+            } else {
+              # Untuk variabel kategorik, gunakan nilai aslinya
+              var_categories <- as.factor(var_values)
+            }
+            pal <- colorFactor(palette = "Set3", domain = var_categories)
+            colors <- pal(var_categories)
            
-         } else if (input$sovi_map_type == "categorical") {
-           # Categorical color palette
-           n_cat <- as.numeric(input$sovi_categories)
-           var_quantiles <- quantile(var_values, probs = seq(0, 1, length.out = n_cat + 1), na.rm = TRUE)
-           var_categories <- cut(var_values, breaks = var_quantiles, include.lowest = TRUE, 
-                                labels = if(n_cat == 3) c("Rendah", "Sedang", "Tinggi") else paste("Q", 1:n_cat, sep=""))
-           pal <- colorFactor(palette = "Set3", domain = var_categories)
-           colors <- pal(var_categories)
-           
-         } else if (input$sovi_map_type == "threshold") {
-           # Threshold-based coloring
-           threshold <- input$sovi_threshold
-           var_categories <- ifelse(var_values > threshold, "High Risk", "Low Risk")
-           pal <- colorFactor(palette = c("green", "red"), domain = c("Low Risk", "High Risk"))
-           colors <- pal(var_categories)
-           
-         } else if (input$sovi_map_type == "hotspot") {
-           # Hotspot analysis (top/bottom 20%)
-           top_20 <- quantile(var_values, 0.8, na.rm = TRUE)
-           bottom_20 <- quantile(var_values, 0.2, na.rm = TRUE)
-           var_categories <- ifelse(var_values >= top_20, "Hotspot", 
-                                   ifelse(var_values <= bottom_20, "Coldspot", "Normal"))
-           pal <- colorFactor(palette = c("blue", "yellow", "red"), domain = c("Coldspot", "Normal", "Hotspot"))
-           colors <- pal(var_categories)
-         }
+                   } else if (input$sovi_map_type == "threshold" && is_numeric) {
+            # Threshold-based coloring (hanya untuk variabel numerik)
+            threshold <- input$sovi_threshold
+            var_categories <- ifelse(var_values > threshold, "High Risk", "Low Risk")
+            pal <- colorFactor(palette = c("green", "red"), domain = c("Low Risk", "High Risk"))
+            colors <- pal(var_categories)
+            
+          } else if (input$sovi_map_type == "hotspot" && is_numeric) {
+            # Hotspot analysis (hanya untuk variabel numerik - top/bottom 20%)
+            top_20 <- quantile(var_values, 0.8, na.rm = TRUE)
+            bottom_20 <- quantile(var_values, 0.2, na.rm = TRUE)
+            var_categories <- ifelse(var_values >= top_20, "Hotspot", 
+                                    ifelse(var_values <= bottom_20, "Coldspot", "Normal"))
+            pal <- colorFactor(palette = c("blue", "yellow", "red"), domain = c("Coldspot", "Normal", "Hotspot"))
+            colors <- pal(var_categories)
+          } else {
+            # Fallback: gunakan categorical untuk variabel non-numerik
+            var_categories <- as.factor(var_values)
+            pal <- colorFactor(palette = "Set3", domain = var_categories)
+            colors <- pal(var_categories)
+          }
          
          # Buat popup content
          popup_content <- character(nrow(data))
          for (i in 1:nrow(data)) {
-           popup_info <- paste0(
-             "<div style='min-width: 200px;'>",
-             "<strong style='color: #2E7D32; font-size: 16px;'>Analisis SOVI</strong><br>",
-             "<strong>Observasi #", i, "</strong><br><hr>",
-             "<strong>", selected_var, ":</strong> ", round(var_values[i], 3), "<br>"
-           )
+                       popup_info <- paste0(
+              "<div style='min-width: 200px;'>",
+              "<strong style='color: #2E7D32; font-size: 16px;'>Analisis SOVI</strong><br>",
+              "<strong>Observasi #", i, "</strong><br><hr>",
+              "<strong>", selected_var, ":</strong> ", 
+              if(is.numeric(var_values[i])) round(var_values[i], 3) else var_values[i], "<br>"
+            )
            
            # Tambah informasi tambahan
            if ("SOVI_Score" %in% names(data) && selected_var != "SOVI_Score") {
@@ -6085,7 +6102,7 @@ Pastikan variabel yang dipilih adalah numerik.")
              fillOpacity = 0.8,
              stroke = TRUE,
              popup = popup_content,
-             label = paste(selected_var, ":", round(var_values, 2))
+             label = paste(selected_var, ":", if(is_numeric) round(var_values, 2) else var_values)
            )
          
          # Tambah legend jika diminta
@@ -6132,34 +6149,50 @@ Pastikan variabel yang dipilih adalah numerik.")
      })
    })
    
-   # Statistik deskriptif untuk SOVI map
-   output$sovi_map_stats <- renderText({
-     if (is.null(input$sovi_map_variable)) return("")
-     
-     data <- values$current_data
-     if (is.null(data)) data <- sovi_data
-     
-     selected_var <- input$sovi_map_variable
-     if (!selected_var %in% names(data)) return("Variabel tidak ditemukan")
-     
-     var_values <- data[[selected_var]]
-     var_values <- var_values[!is.na(var_values)]
-     
-     stats_text <- paste(
-       "=== STATISTIK DESKRIPTIF ===\n",
-       "Variabel:", selected_var, "\n",
-       "Jumlah Observasi:", length(var_values), "\n",
-       "Mean:", round(mean(var_values), 3), "\n",
-       "Median:", round(median(var_values), 3), "\n",
-       "Std Dev:", round(sd(var_values), 3), "\n",
-       "Min:", round(min(var_values), 3), "\n",
-       "Max:", round(max(var_values), 3), "\n",
-       "Q1:", round(quantile(var_values, 0.25), 3), "\n",
-       "Q3:", round(quantile(var_values, 0.75), 3)
-     )
-     
-     return(stats_text)
-   })
+       # Statistik deskriptif untuk SOVI map
+    output$sovi_map_stats <- renderText({
+      if (is.null(input$sovi_map_variable)) return("")
+      
+      data <- values$current_data
+      if (is.null(data)) data <- sovi_data
+      
+      selected_var <- input$sovi_map_variable
+      if (!selected_var %in% names(data)) return("Variabel tidak ditemukan")
+      
+      var_values <- data[[selected_var]]
+      var_values <- var_values[!is.na(var_values)]
+      
+      if (is.numeric(var_values)) {
+        # Statistik untuk variabel numerik
+        stats_text <- paste(
+          "=== STATISTIK DESKRIPTIF ===\n",
+          "Variabel:", selected_var, "\n",
+          "Jumlah Observasi:", length(var_values), "\n",
+          "Mean:", round(mean(var_values), 3), "\n",
+          "Median:", round(median(var_values), 3), "\n",
+          "Std Dev:", round(sd(var_values), 3), "\n",
+          "Min:", round(min(var_values), 3), "\n",
+          "Max:", round(max(var_values), 3), "\n",
+          "Q1:", round(quantile(var_values, 0.25), 3), "\n",
+          "Q3:", round(quantile(var_values, 0.75), 3)
+        )
+      } else {
+        # Statistik untuk variabel kategorik
+        freq_table <- table(var_values)
+        freq_text <- paste(names(freq_table), ":", freq_table, collapse = "\n")
+        
+        stats_text <- paste(
+          "=== STATISTIK DESKRIPTIF ===\n",
+          "Variabel:", selected_var, "(Kategorik)\n",
+          "Jumlah Observasi:", length(var_values), "\n",
+          "Jumlah Kategori:", length(unique(var_values)), "\n\n",
+          "=== FREKUENSI ===\n",
+          freq_text
+        )
+      }
+      
+      return(stats_text)
+    })
    
    # Interpretasi pola spasial
    output$sovi_spatial_interpretation <- renderText({
