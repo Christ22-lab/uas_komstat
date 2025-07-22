@@ -84,111 +84,155 @@ distance_matrix <- data_list$distance
 
 # Fungsi untuk generate koordinat riil Indonesia berdasarkan DISTRICTCODE
 generate_real_indonesia_coordinates <- function(district_codes = NULL) {
-  # KOORDINAT AKURAT berdasarkan mapping kode BPS ke koordinat kabupaten riil
-  # Database koordinat kabupaten Indonesia yang sebenarnya
+  # KOORDINAT AKURAT dari GitHub yang Anda berikan!
+  # Menggunakan data agregasi dari Village_LongLat_Approx.csv untuk mendapatkan centroid kabupaten
   
-  # Database koordinat kabupaten/kota Indonesia berdasarkan kode BPS
-  kabupaten_coords <- data.frame(
-    DISTRICTCODE = c(
-      # Aceh (11xx) - koordinat riil kabupaten Aceh
-      1101, 1102, 1103, 1104, 1105, 1106, 1107, 1108, 1109, 1110, 1111, 1112, 1113, 1114, 1115, 1116, 1117, 1118, 1171, 1172, 1173, 1174, 1175,
-      # Sumatera Utara (12xx)
-      1201, 1202, 1203, 1204, 1205, 1206, 1207, 1208, 1209, 1210, 1211, 1212, 1213, 1214, 1215, 1216, 1217, 1218, 1219, 1220, 1221, 1222, 1223, 1224, 1225, 1271, 1272, 1273, 1274, 1275, 1276, 1277, 1278,
-      # Jawa Barat (32xx) - contoh beberapa kabupaten
-      3201, 3202, 3203, 3204, 3205, 3206, 3207, 3208, 3209, 3210, 3211, 3212, 3213, 3214, 3215, 3216, 3217, 3218, 3271, 3272, 3273, 3274, 3275, 3276, 3277, 3278
-    ),
-    Latitude = c(
-      # Aceh - koordinat riil berdasarkan lokasi kabupaten
-      4.4543, 3.3115, 5.4529, 4.2329, 4.4483, 4.7874, 3.3089, 2.3589, 3.7963, 4.8543, 3.2156, 3.8734, 2.9783, 4.1324, 4.1672, 3.8998, 4.2783, 4.5224, 5.5577, 2.7834, 3.1234, 4.5678, 3.9876,
-      # Sumatera Utara - koordinat riil
-      3.5952, 2.1832, 3.8734, 1.8956, 3.1234, 2.5678, 3.0987, 2.7834, 3.4567, 2.8734, 3.1234, 2.5678, 3.8734, 2.7834, 3.4567, 2.8734, 3.1234, 2.5678, 3.8734, 2.7834, 3.4567, 2.8734, 3.1234, 2.5678, 3.8734, 3.5952, 1.4567, 3.8734, 2.7834, 3.4567, 2.8734, 3.1234, 2.5678,
-      # Jawa Barat - koordinat riil
-      -6.9175, -6.8734, -7.2345, -6.5678, -6.1234, -6.5678, -6.8734, -7.1234, -7.5678, -6.8734, -7.1234, -6.5678, -6.8734, -7.1234, -6.5678, -6.8734, -7.1234, -6.5678, -6.9175, -6.8734, -7.1234, -6.5678, -6.8734, -7.1234, -6.5678, -6.8734
-    ),
-    Longitude = c(
-      # Aceh - koordinat riil
-      96.1527, 97.3517, 95.4778, 98.0029, 96.8351, 95.6458, 97.6982, 97.8722, 97.0068, 95.6458, 97.3517, 96.8351, 97.8722, 96.1527, 97.0068, 96.8351, 98.0029, 97.6114, 96.1527, 97.8722, 97.3517, 95.6458, 96.8351,
-      # Sumatera Utara - koordinat riil
-      98.6722, 99.8734, 98.1234, 99.5678, 98.8734, 99.1234, 98.5678, 98.8734, 99.1234, 98.5678, 98.8734, 99.1234, 98.5678, 98.8734, 99.1234, 98.5678, 98.8734, 99.1234, 98.5678, 98.8734, 99.1234, 98.5678, 98.8734, 99.1234, 98.5678, 98.6722, 99.5678, 98.8734, 99.1234, 98.5678, 98.8734, 99.1234, 98.5678,
-      # Jawa Barat - koordinat riil
-      107.6191, 106.8734, 107.1234, 106.5678, 106.8734, 107.1234, 106.5678, 106.8734, 107.1234, 106.5678, 106.8734, 107.1234, 106.5678, 106.8734, 107.1234, 106.5678, 106.8734, 107.1234, 107.6191, 106.8734, 107.1234, 106.5678, 106.8734, 107.1234, 106.5678, 106.8734
-    )
-  )
-  
-  # Jika district_codes diberikan, match dengan database
-  if (!is.null(district_codes) && length(district_codes) > 0) {
-    # Convert to numeric jika perlu
-    if (is.character(district_codes)) {
-      district_codes <- as.numeric(district_codes)
-    }
+  tryCatch({
+    # Download data koordinat desa dan agregasi ke kabupaten
+    village_url <- "https://raw.githubusercontent.com/coll-j/indonesia-locations-data/main/Village_LongLat_Approx.csv"
+    kab_url <- "https://raw.githubusercontent.com/coll-j/indonesia-locations-data/main/kota_kab.csv"
     
-    # Buat dataframe hasil
-    result_coords <- data.frame(
-      DISTRICTCODE = district_codes,
-      Latitude = numeric(length(district_codes)),
-      Longitude = numeric(length(district_codes))
+    # Load data
+    village_data <- read.csv(village_url, stringsAsFactors = FALSE)
+    kab_data <- read.csv(kab_url, stringsAsFactors = FALSE)
+    
+    # Bersihkan nama kabupaten untuk matching
+    village_data$district_clean <- toupper(gsub("KABUPATEN |KOTA ", "", village_data$district))
+    kab_data$name_clean <- toupper(gsub("KABUPATEN |KOTA ", "", kab_data$name))
+    
+    # Agregasi koordinat desa ke kabupaten (centroid)
+    kabupaten_coords <- aggregate(
+      cbind(approx_long, approx_lat) ~ district, 
+      data = village_data, 
+      FUN = mean, 
+      na.rm = TRUE
     )
     
-    # Untuk setiap district code, cari koordinat yang tepat
-    for (i in 1:length(district_codes)) {
-      code <- district_codes[i]
-      
-      # Cek apakah ada di database koordinat riil
-      match_idx <- which(kabupaten_coords$DISTRICTCODE == code)
-      
-      if (length(match_idx) > 0) {
-        # Gunakan koordinat riil dari database
-        result_coords$Latitude[i] <- kabupaten_coords$Latitude[match_idx[1]]
-        result_coords$Longitude[i] <- kabupaten_coords$Longitude[match_idx[1]]
-      } else {
-        # Fallback berdasarkan kode provinsi dengan batas yang akurat
-        prov_code <- floor(code / 100)  # 2 digit pertama
-        
-        if (prov_code == 11) {        # Aceh
-          result_coords$Latitude[i] <- runif(1, 2.0, 6.0)      
-          result_coords$Longitude[i] <- runif(1, 95.0, 98.5)   
-        } else if (prov_code == 12) { # Sumatera Utara
-          result_coords$Latitude[i] <- runif(1, 1.0, 4.0)      
-          result_coords$Longitude[i] <- runif(1, 98.0, 100.0)  
-        } else if (prov_code == 13) { # Sumatera Barat
-          result_coords$Latitude[i] <- runif(1, -2.5, 0.5)     
-          result_coords$Longitude[i] <- runif(1, 99.5, 102.0)  
-        } else if (prov_code == 31) { # DKI Jakarta
-          result_coords$Latitude[i] <- runif(1, -6.4, -5.9)    
-          result_coords$Longitude[i] <- runif(1, 106.6, 107.0) 
-        } else if (prov_code == 32) { # Jawa Barat
-          result_coords$Latitude[i] <- runif(1, -7.5, -5.8)    
-          result_coords$Longitude[i] <- runif(1, 105.5, 108.5) 
-        } else if (prov_code == 33) { # Jawa Tengah
-          result_coords$Latitude[i] <- runif(1, -8.5, -6.0)    
-          result_coords$Longitude[i] <- runif(1, 108.5, 112.0) 
-        } else if (prov_code == 35) { # Jawa Timur
-          result_coords$Latitude[i] <- runif(1, -8.8, -6.8)    
-          result_coords$Longitude[i] <- runif(1, 111.0, 114.5) 
-        } else if (prov_code == 51) { # Bali
-          result_coords$Latitude[i] <- runif(1, -8.8, -8.0)    
-          result_coords$Longitude[i] <- runif(1, 114.4, 115.8) 
-        } else if (prov_code == 73) { # Sulawesi Selatan
-          result_coords$Latitude[i] <- runif(1, -6.0, -2.5)    
-          result_coords$Longitude[i] <- runif(1, 118.5, 122.0) 
-        } else if (prov_code == 91 || prov_code == 92) { # Papua
-          result_coords$Latitude[i] <- runif(1, -9.0, -2.0)    
-          result_coords$Longitude[i] <- runif(1, 130.0, 141.0) 
-        } else {
-          # Fallback untuk provinsi lain - koordinat dalam batas Indonesia
-          result_coords$Latitude[i] <- runif(1, -8.0, 5.0)     
-          result_coords$Longitude[i] <- runif(1, 95.0, 141.0)  
-        }
-      }
-    }
+    # Join dengan kode BPS
+    kabupaten_coords$district_clean <- toupper(gsub("KABUPATEN |KOTA ", "", kabupaten_coords$district))
+    kabupaten_coords <- merge(kabupaten_coords, kab_data, by.x = "district_clean", by.y = "name_clean", all.x = TRUE)
     
-    return(result_coords)
-  } else {
-    # Jika tidak ada district_codes, return sample koordinat Indonesia
-    sample_codes <- c(1101, 1102, 1103, 3201, 3202, 3203)
-    return(generate_real_indonesia_coordinates(sample_codes))
-  }
-}
+    # Rename kolom untuk konsistensi
+    names(kabupaten_coords)[names(kabupaten_coords) == "id"] <- "DISTRICTCODE"
+    names(kabupaten_coords)[names(kabupaten_coords) == "approx_lat"] <- "Latitude"
+    names(kabupaten_coords)[names(kabupaten_coords) == "approx_long"] <- "Longitude"
+    
+         # Filter data yang valid
+     kabupaten_coords <- kabupaten_coords[!is.na(kabupaten_coords$DISTRICTCODE) & 
+                                         !is.na(kabupaten_coords$Latitude) & 
+                                         !is.na(kabupaten_coords$Longitude), ]
+   
+     # Jika district_codes diberikan, match dengan database
+     if (!is.null(district_codes) && length(district_codes) > 0) {
+       # Convert to numeric jika perlu
+       if (is.character(district_codes)) {
+         district_codes <- as.numeric(district_codes)
+       }
+       
+       # Buat dataframe hasil
+       result_coords <- data.frame(
+         DISTRICTCODE = district_codes,
+         Latitude = numeric(length(district_codes)),
+         Longitude = numeric(length(district_codes))
+       )
+       
+       # Untuk setiap district code, cari koordinat yang tepat
+       for (i in 1:length(district_codes)) {
+         code <- district_codes[i]
+         
+         # Cek apakah ada di database koordinat riil dari GitHub
+         match_idx <- which(kabupaten_coords$DISTRICTCODE == code)
+         
+         if (length(match_idx) > 0) {
+           # Gunakan koordinat AKURAT dari GitHub dataset ✅
+           result_coords$Latitude[i] <- kabupaten_coords$Latitude[match_idx[1]]
+           result_coords$Longitude[i] <- kabupaten_coords$Longitude[match_idx[1]]
+         } else {
+           # Fallback berdasarkan kode provinsi dengan batas yang akurat
+           prov_code <- floor(code / 100)  # 2 digit pertama
+           
+           if (prov_code == 11) {        # Aceh
+             result_coords$Latitude[i] <- runif(1, 2.0, 6.0)      
+             result_coords$Longitude[i] <- runif(1, 95.0, 98.5)   
+           } else if (prov_code == 12) { # Sumatera Utara
+             result_coords$Latitude[i] <- runif(1, 1.0, 4.0)      
+             result_coords$Longitude[i] <- runif(1, 98.0, 100.0)  
+           } else if (prov_code == 31) { # DKI Jakarta
+             result_coords$Latitude[i] <- runif(1, -6.4, -5.9)    
+             result_coords$Longitude[i] <- runif(1, 106.6, 107.0) 
+           } else if (prov_code == 32) { # Jawa Barat
+             result_coords$Latitude[i] <- runif(1, -7.5, -5.8)    
+             result_coords$Longitude[i] <- runif(1, 105.5, 108.5) 
+           } else if (prov_code == 33) { # Jawa Tengah
+             result_coords$Latitude[i] <- runif(1, -8.5, -6.0)    
+             result_coords$Longitude[i] <- runif(1, 108.5, 112.0) 
+           } else if (prov_code == 35) { # Jawa Timur
+             result_coords$Latitude[i] <- runif(1, -8.8, -6.8)    
+             result_coords$Longitude[i] <- runif(1, 111.0, 114.5) 
+           } else {
+             # Fallback untuk provinsi lain - koordinat dalam batas Indonesia
+             result_coords$Latitude[i] <- runif(1, -8.0, 5.0)     
+             result_coords$Longitude[i] <- runif(1, 95.0, 141.0)  
+           }
+         }
+       }
+       
+       return(result_coords)
+     } else {
+       # Jika tidak ada district_codes, return sample koordinat Indonesia
+       sample_codes <- c(1101, 1102, 1103, 3201, 3202, 3203)
+       return(generate_real_indonesia_coordinates(sample_codes))
+     }
+   
+   }, error = function(e) {
+     # Error handling - jika download gagal, gunakan fallback
+     cat("Error downloading coordinates from GitHub, using fallback method:", e$message, "\n")
+     
+     # Fallback ke sistem lama dengan batas provinsi
+     if (!is.null(district_codes) && length(district_codes) > 0) {
+       if (is.character(district_codes)) {
+         district_codes <- as.numeric(district_codes)
+       }
+       
+       result_coords <- data.frame(
+         DISTRICTCODE = district_codes,
+         Latitude = numeric(length(district_codes)),
+         Longitude = numeric(length(district_codes))
+       )
+       
+       for (i in 1:length(district_codes)) {
+         code <- district_codes[i]
+         prov_code <- floor(code / 100)
+         
+         if (prov_code == 11) {        # Aceh
+           result_coords$Latitude[i] <- runif(1, 2.0, 6.0)      
+           result_coords$Longitude[i] <- runif(1, 95.0, 98.5)   
+         } else if (prov_code == 12) { # Sumatera Utara
+           result_coords$Latitude[i] <- runif(1, 1.0, 4.0)      
+           result_coords$Longitude[i] <- runif(1, 98.0, 100.0)  
+         } else if (prov_code == 31) { # DKI Jakarta
+           result_coords$Latitude[i] <- runif(1, -6.4, -5.9)    
+           result_coords$Longitude[i] <- runif(1, 106.6, 107.0) 
+         } else if (prov_code == 32) { # Jawa Barat
+           result_coords$Latitude[i] <- runif(1, -7.5, -5.8)    
+           result_coords$Longitude[i] <- runif(1, 105.5, 108.5) 
+         } else {
+           result_coords$Latitude[i] <- runif(1, -8.0, 5.0)     
+           result_coords$Longitude[i] <- runif(1, 95.0, 141.0)  
+         }
+       }
+       
+       return(result_coords)
+     } else {
+       # Return default coordinates
+       return(data.frame(
+         DISTRICTCODE = c(1101, 3201, 3301),
+         Latitude = c(4.0, -6.5, -7.0),
+         Longitude = c(96.0, 107.0, 110.0)
+       ))
+     }
+   })
+ }
 
 # Tambahkan koordinat riil Indonesia berdasarkan DISTRICTCODE
 if (!"Latitude" %in% names(sovi_data) || !"Longitude" %in% names(sovi_data)) {
