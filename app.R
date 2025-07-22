@@ -1705,12 +1705,12 @@ ui <- dashboardPage(
                 box(width = 4, title = "Pengaturan Analisis Peta SOVI", status = "primary", solidHeader = TRUE,
                     selectInput("sovi_map_variable", "Pilih Variabel SOVI:",
                                 choices = list(
-                                  "Population" = "POPULATION",
+                                  "Population (total)" = "POPULATION",
                                   "Children (%)" = "CHILDREN", 
                                   "Female (%)" = "FEMALE",
                                   "Elderly (%)" = "ELDERLY",
                                   "Female Head Family (%)" = "FHEAD",
-                                  "Family Size (avg)" = "FAMILYSIZE",
+                                  "Family Size (avg persons)" = "FAMILYSIZE",
                                   "No Electric (%)" = "NOELECTRIC",
                                   "Low Education (%)" = "LOWEDU",
                                   "Population Growth (%)" = "GROWTH",
@@ -6076,7 +6076,17 @@ Pastikan variabel yang dipilih adalah numerik.")
               "<strong style='color: #2E7D32; font-size: 16px;'>Analisis SOVI</strong><br>",
               "<strong>Observasi #", i, "</strong><br><hr>",
               "<strong>", selected_var, ":</strong> ", 
-              if(is.numeric(var_values[i])) round(var_values[i], 3) else var_values[i], "<br>"
+              if(is.numeric(var_values[i])) {
+                if(selected_var == "POPULATION") {
+                  format(round(var_values[i]), big.mark = ",")
+                } else if(selected_var == "FAMILYSIZE") {
+                  paste0(round(var_values[i], 2), " persons")
+                } else {
+                  paste0(round(var_values[i], 2), "%")
+                }
+              } else {
+                var_values[i]
+              }, "<br>"
             )
            
                        # Tambah informasi tambahan
