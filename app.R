@@ -77,6 +77,16 @@ data_list <- load_data()
 sovi_data <- data_list$sovi
 distance_matrix <- data_list$distance
 
+# Debug: Print distance matrix info
+cat("=== DISTANCE MATRIX DEBUG INFO ===\n")
+cat("Class:", class(distance_matrix), "\n")
+cat("Dimensions:", dim(distance_matrix), "\n")
+if (is.data.frame(distance_matrix) || is.matrix(distance_matrix)) {
+  cat("First few values:", head(distance_matrix[,1], 10), "\n")
+  cat("Column names:", names(distance_matrix)[1:min(5, ncol(distance_matrix))], "\n")
+}
+cat("=== END DEBUG INFO ===\n")
+
 # CATATAN PENTING: Koordinat Latitude dan Longitude 
 # Dataset asli SOVI dan distance matrix TIDAK memiliki koordinat geografis riil
 # Koordinat yang ditampilkan menggunakan DATABASE KOORDINAT RIIL Indonesia
@@ -334,17 +344,55 @@ sovi_data$Cluster <- as.factor(cluster_assignment)
 # FGWC (Fuzzy Geographically Weighted Clustering) Implementation
 fgwc_clustering <- function(distance_matrix, coordinates, k = 3, m = 2.0, bandwidth = 100, max_iter = 100, tol = 1e-6) {
   
-  # Convert distance matrix to data matrix using MDS for initial clustering
-  if (is.matrix(distance_matrix) || is.data.frame(distance_matrix)) {
-    dist_obj <- as.dist(distance_matrix)
+  # Handle different distance matrix formats
+  if (is.data.frame(distance_matrix)) {
+    # Check if it's a square matrix format
+    if (ncol(distance_matrix) == nrow(distance_matrix)) {
+      # Square data frame - convert to matrix then dist
+      dist_matrix <- as.matrix(distance_matrix)
+      dist_obj <- as.dist(dist_matrix)
+    } else {
+      # Might be in long format or other format
+      # Try to detect if it's a triangular matrix saved as CSV
+      if (ncol(distance_matrix) == 1) {
+        # Single column - might be lower triangular
+        n_obs <- ceiling(sqrt(2 * nrow(distance_matrix)))
+        if (n_obs * (n_obs - 1) / 2 == nrow(distance_matrix)) {
+          # It's a lower triangular format
+          dist_obj <- as.dist(distance_matrix[,1])
+        } else {
+          stop("Cannot determine distance matrix format from single column")
+        }
+      } else {
+        # Multi-column format - try first column as distances
+        n_obs <- ceiling(sqrt(2 * nrow(distance_matrix)))
+        if (n_obs * (n_obs - 1) / 2 == nrow(distance_matrix)) {
+          dist_obj <- as.dist(distance_matrix[,1])
+        } else {
+          stop(paste("Distance matrix format not recognized. Dimensions:", nrow(distance_matrix), "x", ncol(distance_matrix)))
+        }
+      }
+    }
+  } else if (is.matrix(distance_matrix)) {
+    # If it's already a matrix
+    if (nrow(distance_matrix) == ncol(distance_matrix)) {
+      dist_obj <- as.dist(distance_matrix)
+    } else {
+      stop(paste("Distance matrix must be square. Current dimensions:", nrow(distance_matrix), "x", ncol(distance_matrix)))
+    }
   } else {
+    # Assume it's already a dist object
     dist_obj <- distance_matrix
   }
   
   # MDS to get initial data points
-  mds_result <- cmdscale(dist_obj, k = 2)
-  data_points <- mds_result
-  n <- nrow(data_points)
+  tryCatch({
+    mds_result <- cmdscale(dist_obj, k = 2)
+    data_points <- mds_result
+    n <- nrow(data_points)
+  }, error = function(e) {
+    stop(paste("Error in MDS:", e$message))
+  })
   
   # Initialize cluster centers randomly
   centers <- data_points[sample(n, k), ]
@@ -5391,8 +5439,25 @@ Pastikan variabel yang dipilih adalah numerik.")
         }
       }
       
-      clustering <- fgwc_clustering(distance_matrix, coordinates, k = k, m = m, 
-                                   bandwidth = bandwidth, max_iter = max_iter, tol = tol)
+      # Debug info
+      cat("Distance matrix dimensions:", dim(distance_matrix), "\n")
+      cat("Coordinates available:", !is.null(coordinates), "\n")
+      if (!is.null(coordinates)) {
+        cat("Coordinates dimensions:", dim(coordinates), "\n")
+      }
+      
+      tryCatch({
+        clustering <- fgwc_clustering(distance_matrix, coordinates, k = k, m = m, 
+                                     bandwidth = bandwidth, max_iter = max_iter, tol = tol)
+      }, error = function(e) {
+        showNotification(
+          paste("Error dalam FGWC clustering:", e$message), 
+          type = "error", 
+          duration = 10
+        )
+        # Fallback to hierarchical clustering
+        clustering <- do_clustering(distance_matrix, k = k, method = "ward.D2", cluster_method = "hierarchical")
+      })
     } else {
       k <- as.numeric(input$n_cluster)
       if (cluster_method == "hierarchical") {
