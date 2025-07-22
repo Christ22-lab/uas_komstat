@@ -1902,123 +1902,195 @@ ui <- dashboardPage(
       # =================== METADATA ===================
       tabItem(tabName = "metadata",
               fluidRow(
-                box(width = 12, title = "Metadata dan Dokumentasi Dataset", status = "primary", solidHeader = TRUE,
+                box(width = 12, title = "Metadata dan Dokumentasi Lengkap Dashboard SOVI Indonesia", status = "primary", solidHeader = TRUE,
                     div(class = "fade-in",
-                        h3("Dokumentasi Dataset Social Vulnerability Index (SOVI) dan Distance Matrix", class = "text-gradient"),
+                        h3("📋 Dokumentasi Lengkap: Data, Variabel, dan Analisis Statistik", class = "text-gradient"),
                         
-                        # Dataset 1: SOVI
-                        h4("Dataset 1: Social Vulnerability Index (SOVI)", style = "color: #667eea; margin-top: 20px;"),
-                        tags$div(class = "info-box", style = "border-left: 4px solid #667eea; background: linear-gradient(135deg, #f8faff 0%, #e8f2ff 100%);",
-                                 h5("Sumber Data"),
+                        # PAPER REFERENCE
+                        h4("📚 Referensi Ilmiah", style = "color: #1565C0; margin-top: 20px;"),
+                        tags$div(class = "info-box", style = "border-left: 4px solid #1565C0; background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);",
+                                 h5("Paper Utama"),
                                  tags$ul(
-                                   tags$li(strong("URL Data:"), tags$a(href = sovi_url, "https://raw.githubusercontent.com/bmlmcmc/naspaclust/main/data/sovi_data.csv", target = "_blank")),
-                                   tags$li(strong("Metadata Referensi:"), tags$a(href = metadata_url, "ScienceDirect - Social vulnerability data article", target = "_blank")),
-                                   tags$li(strong("DOI:"), tags$a(href = "https://doi.org/10.1016/j.dib.2021.107618", "10.1016/j.dib.2021.107618", target = "_blank")),
-                                   tags$li(strong("Journal:"), "Data in Brief - Elsevier"),
-                                   tags$li(strong("Tahun:"), "2021")
+                                   tags$li(strong("Judul:"), "Social vulnerability index dataset for Indonesia"),
+                                   tags$li(strong("Authors:"), "Yuliagnis Transver Wijaya, Ian Tryaldi Halim"),
+                                   tags$li(strong("Journal:"), "Data in Brief, Elsevier"),
+                                   tags$li(strong("Volume:"), "39, Article 107660"),
+                                   tags$li(strong("Tahun:"), "2021"),
+                                   tags$li(strong("DOI:"), tags$a(href = "https://doi.org/10.1016/j.dib.2021.107660", "10.1016/j.dib.2021.107660", target = "_blank")),
+                                   tags$li(strong("URL Paper:"), tags$a(href = metadata_url, "ScienceDirect Link", target = "_blank"))
                                  ),
                                  
-                                 h5("Deskripsi"),
-                                 p("Dataset ini berisi indikator kerentanan sosial yang dikembangkan dalam konteks penelitian COVID-19. Data mengukur berbagai dimensi kerentanan sosial komunitas terhadap bencana dan gangguan eksternal, termasuk pandemi."),
+                                 h5("Abstrak dan Konteks"),
+                                 p("Dataset ini menyediakan indeks kerentanan sosial (SOVI) untuk 514 kabupaten/kota di Indonesia pada tahun 2019. Data dikumpulkan dari berbagai sumber resmi Indonesia termasuk BPS (Badan Pusat Statistik) dan BNPB (Badan Nasional Penanggulangan Bencana). Dataset ini dikembangkan untuk mendukung perencanaan mitigasi bencana dan analisis kerentanan sosial masyarakat Indonesia."),
                                  
-                                 h5("Variabel dalam Dataset (511 Kabupaten/Kota Indonesia)"),
+                                 h5("Metodologi Pengembangan SOVI"),
+                                 tags$ol(
+                                   tags$li(strong("Data Collection:"), " Pengumpulan data dari 16 variabel sosio-ekonomi dan demografis"),
+                                   tags$li(strong("Principal Component Analysis (PCA):"), " Identifikasi 4 komponen utama kerentanan"),
+                                   tags$li(strong("Standardization:"), " Standardisasi variabel untuk komparabilitas"),
+                                   tags$li(strong("Index Construction:"), " Konstruksi indeks komposit SOVI"),
+                                   tags$li(strong("Validation:"), " Validasi dengan data historis bencana")
+                                 )
+                        ),
+                        
+                        hr(),
+                        
+                        # DATASET 1: SOVI DATA
+                        h4("📊 Dataset 1: Social Vulnerability Index (SOVI) Indonesia", style = "color: #667eea; margin-top: 20px;"),
+                        tags$div(class = "info-box", style = "border-left: 4px solid #667eea; background: linear-gradient(135deg, #f8faff 0%, #e8f2ff 100%);",
+                                 
+                                 h5("Informasi Dataset"),
+                                 tags$ul(
+                                   tags$li(strong("URL Data:"), tags$a(href = sovi_url, "sovi_data.csv", target = "_blank")),
+                                   tags$li(strong("Ukuran Dataset:"), "514 observasi (kabupaten/kota) × 17 variabel"),
+                                   tags$li(strong("Periode Data:"), "2019 (data tahunan)"),
+                                   tags$li(strong("Cakupan Geografis:"), "Seluruh Indonesia (34 provinsi)"),
+                                   tags$li(strong("Format File:"), "CSV (Comma Separated Values)"),
+                                   tags$li(strong("Encoding:"), "UTF-8")
+                                 ),
+                                 
+                                 h5("17 Variabel SOVI (Sesuai Paper)"),
                                  div(class = "variable-table",
-                                   tags$table(class = "table table-striped table-bordered", style = "font-size: 12px;",
+                                   tags$table(class = "table table-striped table-bordered", style = "font-size: 11px;",
                                      tags$thead(
                                        tags$tr(
-                                         tags$th("Nama Variabel"),
-                                         tags$th("Definisi"),
-                                         tags$th("Tipe Data"),
-                                         tags$th("Satuan/Range")
+                                         tags$th("Variabel"),
+                                         tags$th("Deskripsi Lengkap"),
+                                         tags$th("Unit"),
+                                         tags$th("Sumber Data"),
+                                         tags$th("Komponen PCA")
                                        )
                                      ),
-                                                                           tags$tbody(
+                                     tags$tbody(
+                                        tags$tr(
+                                          tags$td(strong("DISTRICTCODE")),
+                                          tags$td("Kode BPS kabupaten/kota (4 digit)"),
+                                          tags$td("Kode"),
+                                          tags$td("BPS"),
+                                          tags$td("Identifier")
+                                        ),
+                                        tags$tr(
+                                          tags$td(strong("CHILDREN")),
+                                          tags$td("Persentase anak usia 0-4 tahun terhadap total populasi"),
+                                          tags$td("%"),
+                                          tags$td("BPS Susenas"),
+                                          tags$td("Komponen 3")
+                                        ),
                                         tags$tr(
                                           tags$td(strong("FEMALE")),
-                                          tags$td("Persentase populasi perempuan di kabupaten/kota"),
-                                          tags$td("Numerik (kontinyu)"),
-                                          tags$td("0-100%")
+                                          tags$td("Persentase penduduk perempuan terhadap total populasi"),
+                                          tags$td("%"),
+                                          tags$td("BPS Susenas"),
+                                          tags$td("Komponen 2")
                                         ),
                                         tags$tr(
                                           tags$td(strong("ELDERLY")),
-                                          tags$td("Persentase populasi lanjut usia (≥65 tahun)"),
-                                          tags$td("Numerik (kontinyu)"),
-                                          tags$td("0-100%")
+                                          tags$td("Persentase penduduk usia 65+ tahun terhadap total populasi"),
+                                          tags$td("%"),
+                                          tags$td("BPS Susenas"),
+                                          tags$td("Komponen 3")
                                         ),
                                         tags$tr(
                                           tags$td(strong("FHEAD")),
                                           tags$td("Persentase rumah tangga dengan kepala keluarga perempuan"),
-                                          tags$td("Numerik (kontinyu)"),
-                                          tags$td("0-100%")
+                                          tags$td("%"),
+                                          tags$td("BPS Susenas"),
+                                          tags$td("Komponen 2")
                                         ),
                                         tags$tr(
                                           tags$td(strong("FAMILYSIZE")),
-                                          tags$td("Rata-rata ukuran keluarga per rumah tangga"),
-                                          tags$td("Numerik (kontinyu)"),
-                                          tags$td("Orang per rumah tangga")
+                                          tags$td("Rata-rata jumlah anggota keluarga per rumah tangga"),
+                                          tags$td("Orang"),
+                                          tags$td("BPS Susenas"),
+                                          tags$td("Komponen 4")
                                         ),
                                         tags$tr(
                                           tags$td(strong("NOELECTRIC")),
-                                          tags$td("Persentase rumah tangga tanpa akses listrik"),
-                                          tags$td("Numerik (kontinyu)"),
-                                          tags$td("0-100%")
+                                          tags$td("Persentase rumah tangga tanpa akses listrik PLN"),
+                                          tags$td("%"),
+                                          tags$td("BPS Susenas"),
+                                          tags$td("Komponen 1")
                                         ),
                                         tags$tr(
                                           tags$td(strong("LOWEDU")),
-                                          tags$td("Persentase populasi dengan tingkat pendidikan rendah"),
-                                          tags$td("Numerik (kontinyu)"),
-                                          tags$td("0-100%")
+                                          tags$td("Persentase penduduk usia 15+ dengan pendidikan ≤ SD"),
+                                          tags$td("%"),
+                                          tags$td("BPS Susenas"),
+                                          tags$td("Komponen 1")
                                         ),
                                         tags$tr(
                                           tags$td(strong("GROWTH")),
-                                          tags$td("Tingkat pertumbuhan populasi tahunan"),
-                                          tags$td("Numerik (kontinyu)"),
-                                          tags$td("Persentase (%)")
+                                          tags$td("Tingkat pertumbuhan penduduk tahunan (2018-2019)"),
+                                          tags$td("%"),
+                                          tags$td("BPS"),
+                                          tags$td("Komponen 4")
+                                        ),
+                                        tags$tr(
+                                          tags$td(strong("POVERTY")),
+                                          tags$td("Persentase penduduk dengan pengeluaran < garis kemiskinan"),
+                                          tags$td("%"),
+                                          tags$td("BPS"),
+                                          tags$td("Komponen 1")
+                                        ),
+                                        tags$tr(
+                                          tags$td(strong("ILLITERATE")),
+                                          tags$td("Persentase penduduk usia 15+ yang buta huruf"),
+                                          tags$td("%"),
+                                          tags$td("BPS Susenas"),
+                                          tags$td("Komponen 1")
+                                        ),
+                                        tags$tr(
+                                          tags$td(strong("NOTRAINING")),
+                                          tags$td("Persentase penduduk usia 15+ tanpa pelatihan kerja"),
+                                          tags$td("%"),
+                                          tags$td("BPS Susenas"),
+                                          tags$td("Komponen 1")
+                                        ),
+                                        tags$tr(
+                                          tags$td(strong("DPRONE")),
+                                          tags$td("Persentase wilayah dengan tingkat risiko bencana tinggi"),
+                                          tags$td("%"),
+                                          tags$td("BNPB"),
+                                          tags$td("Komponen 4")
+                                        ),
+                                        tags$tr(
+                                          tags$td(strong("RENTED")),
+                                          tags$td("Persentase rumah tangga dengan status tempat tinggal sewa"),
+                                          tags$td("%"),
+                                          tags$td("BPS Susenas"),
+                                          tags$td("Komponen 4")
                                         ),
                                         tags$tr(
                                           tags$td(strong("NOSEWER")),
-                                          tags$td("Persentase rumah tangga tanpa akses sistem pembuangan limbah"),
-                                          tags$td("Numerik (kontinyu)"),
-                                          tags$td("0-100%")
+                                          tags$td("Persentase rumah tangga tanpa akses fasilitas sanitasi"),
+                                          tags$td("%"),
+                                          tags$td("BPS Susenas"),
+                                          tags$td("Komponen 1")
                                         ),
                                         tags$tr(
                                           tags$td(strong("TAPWATER")),
-                                          tags$td("Persentase rumah tangga dengan akses air bersih/ledeng"),
-                                          tags$td("Numerik (kontinyu)"),
-                                          tags$td("0-100%")
+                                          tags$td("Persentase rumah tangga dengan akses air bersih/PDAM"),
+                                          tags$td("%"),
+                                          tags$td("BPS Susenas"),
+                                          tags$td("Komponen 4")
                                         ),
                                         tags$tr(
                                           tags$td(strong("POPULATION")),
-                                          tags$td("Jumlah total populasi penduduk kabupaten/kota"),
-                                          tags$td("Numerik (diskrit)"),
-                                          tags$td("Jiwa (integer)")
-                                        ),
-                                        tags$tr(
-                                          tags$td(strong("Latitude")),
-                                          tags$td("SIMULASI koordinat lintang untuk visualisasi peta (BUKAN koordinat riil kabupaten/kota)"),
-                                          tags$td("Numerik (kontinyu)"),
-                                          tags$td("Derajat (-11° hingga 6°) - RANDOM")
-                                        ),
-                                        tags$tr(
-                                          tags$td(strong("Longitude")),
-                                          tags$td("SIMULASI koordinat bujur untuk visualisasi peta (BUKAN koordinat riil kabupaten/kota)"),
-                                          tags$td("Numerik (kontinyu)"),
-                                          tags$td("Derajat (95° hingga 141°) - RANDOM")
-                                        ),
-                                        tags$tr(
-                                          tags$td(strong("County")),
-                                          tags$td("Nama kabupaten/kota (identifier geografis)"),
-                                          tags$td("Karakter/Teks"),
-                                          tags$td("String (nama wilayah)")
-                                        ),
-                                        tags$tr(
-                                          tags$td(strong("SOVI_Score")),
-                                          tags$td("Skor indeks kerentanan sosial (composite index)"),
-                                          tags$td("Numerik (kontinyu)"),
-                                          tags$td("Nilai terstandarisasi")
+                                          tags$td("Jumlah total penduduk kabupaten/kota"),
+                                          tags$td("Jiwa"),
+                                          tags$td("BPS"),
+                                          tags$td("Komponen 4")
                                         )
                                       )
                                    )
+                                 ),
+                                 
+                                 h5("4 Komponen Utama SOVI (Hasil PCA)"),
+                                 tags$ol(
+                                   tags$li(strong("Komponen 1 - Faktor Sosio-Ekonomi:"), " POVERTY, LOWEDU, ILLITERATE, NOTRAINING, NOELECTRIC, NOSEWER"),
+                                   tags$li(strong("Komponen 2 - Faktor Gender:"), " FEMALE, FHEAD"),
+                                   tags$li(strong("Komponen 3 - Faktor Demografi Usia:"), " CHILDREN, ELDERLY"),
+                                   tags$li(strong("Komponen 4 - Faktor Kepadatan & Infrastruktur:"), " POPULATION, FAMILYSIZE, GROWTH, RENTED, DPRONE, TAPWATER")
                                  )
                         ),
                         
