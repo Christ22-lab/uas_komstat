@@ -2482,8 +2482,8 @@ ui <- dashboardPage(
           box(width = 12, title = "Analisis Clustering Berdasarkan Distance Matrix", status = "info", solidHeader = TRUE,
             div(class = "info-box",
               p(strong("Tujuan Menu:"), "Menu ini digunakan untuk mengelompokkan wilayah berdasarkan matriks jarak yang telah dihitung dari data spasial."),
-              p(strong("Fitur Utama:"), "Hierarchical clustering, dendrogram, silhouette analysis, dan visualisasi cluster pada peta interaktif."),
-              p(strong("Cara Penggunaan:"), "1) Pilih jumlah cluster dan metode clustering, 2) Jalankan analisis, 3) Interpretasi dendrogram dan silhouette plot, 4) Visualisasi hasil pada peta.")
+              p(strong("Fitur Utama:"), "Hierarchical clustering, K-means, K-medoids (PAM), DBSCAN, dendrogram, dan visualisasi cluster pada peta interaktif dengan koordinat riil Indonesia."),
+              p(strong("Cara Penggunaan:"), "1) Pilih algoritma clustering dan parameter, 2) Jalankan analisis, 3) Interpretasi dendrogram/scatter plot, 4) Analisis distribusi spasial cluster pada peta interaktif.")
             )
           )
         ),
@@ -2560,27 +2560,11 @@ ui <- dashboardPage(
         ),
         
         fluidRow(
-          box(width = 6, title = "Silhouette Analysis", status = "warning", solidHeader = TRUE,
-            h5("Analisis Silhouette"),
-            p("Silhouette analysis mengukur seberapa baik setiap observasi cocok dengan cluster-nya dibandingkan dengan cluster lain. Nilai silhouette berkisar dari -1 hingga 1:"),
-            tags$ul(
-              tags$li(strong("Nilai > 0.7:"), "Struktur cluster sangat kuat"),
-              tags$li(strong("Nilai 0.5-0.7:"), "Struktur cluster cukup baik"),
-              tags$li(strong("Nilai 0.25-0.5:"), "Struktur cluster lemah"),
-              tags$li(strong("Nilai < 0.25:"), "Tidak ada struktur cluster yang jelas")
-            ),
-            plotOutput("silhouette_plot", height = "250px"),
-            br(),
-            div(class = "interpretation-box",
-              h5("Kualitas Clustering:"),
-              textOutput("silhouette_interpretation")
-            )
-          ),
-          
-          box(width = 6, title = "Peta Cluster", status = "success", solidHeader = TRUE,
-            h5("Peta Interaktif Hasil Clustering"),
+          box(width = 12, title = "Peta Interaktif Hasil Clustering", status = "success", solidHeader = TRUE,
+            h5("Distribusi Spasial Cluster dengan Koordinat Riil Indonesia"),
             p("Peta menunjukkan distribusi cluster berdasarkan koordinat RIIL kabupaten/kota Indonesia yang dipetakan melalui DISTRICTCODE (kode BPS). Setiap titik berada pada lokasi geografis yang sebenarnya, memberikan visualisasi yang akurat tentang distribusi spasial hasil clustering."),
-            leafletOutput("cluster_map", height = "250px"),
+            p(strong("Sumber Koordinat:"), "Database koordinat riil Indonesia berdasarkan DISTRICTCODE BPS (Badan Pusat Statistik) yang mencakup seluruh kabupaten/kota di Indonesia dari Aceh hingga Papua."),
+            leafletOutput("cluster_map", height = "500px"),
             br(),
             downloadButton("download_cluster_map", "Download Peta Cluster (PNG)", class = "btn-success")
           )
@@ -5080,13 +5064,7 @@ Pastikan variabel yang dipilih adalah numerik.")
     }
   })
   
-  output$silhouette_plot <- renderPlot({
-    if (!is.null(values$silhouette)) {
-      plot(values$silhouette, main = "Silhouette Plot", col = rainbow(max(values$silhouette[,1])))
-    } else {
-      plot(clustering_result$silhouette, main = "Silhouette Plot", col = rainbow(max(clustering_result$silhouette[,1])))
-    }
-  })
+
   
     output$cluster_map <- renderLeaflet({
     tryCatch({
@@ -5163,27 +5141,56 @@ Pastikan variabel yang dipilih adalah numerik.")
       for (i in 1:n_clusters) {
         cluster_idx <- which(data$Cluster == i)
         if (length(cluster_idx) > 0) {
-          # Buat popup info yang lebih informatif
-          popup_text <- paste0(
-            "<strong>Cluster ", i, "</strong><br>",
-            "Jumlah Observasi: ", length(cluster_idx), "<br>"
-          )
+          # Buat popup info yang lebih informatif dengan statistik cluster
+          popup_content <- character(length(cluster_idx))
           
-          # Tambah info tambahan jika tersedia
-          if ("County" %in% names(data)) {
-            popup_text <- paste0(popup_text, 
-              "Area: ", paste(head(data$County[cluster_idx], 3), collapse = ", "), 
-              if(length(cluster_idx) > 3) "..." else "", "<br>")
+          for (j in 1:length(cluster_idx)) {
+            idx <- cluster_idx[j]
+            popup_info <- paste0(
+              "<div style='min-width: 200px;'>",
+              "<strong style='color: ", cluster_colors[i], "; font-size: 16px;'>Cluster ", i, "</strong><br>",
+              "<strong>Observasi #", idx, "</strong><br><hr>"
+            )
+            
+            # Tambah informasi geografis
+            if ("County" %in% names(data)) {
+              popup_info <- paste0(popup_info, 
+                "<strong>Area:</strong> ", data$County[idx], "<br>")
+            }
+            
+            if ("State" %in% names(data)) {
+              popup_info <- paste0(popup_info, 
+                "<strong>Provinsi:</strong> ", data$State[idx], "<br>")
+            }
+            
+            if ("DISTRICTCODE" %in% names(data)) {
+              popup_info <- paste0(popup_info, 
+                "<strong>Kode BPS:</strong> ", data$DISTRICTCODE[idx], "<br>")
+            }
+            
+            # Tambah informasi SOVI jika tersedia
+            if ("SOVI_Score" %in% names(data)) {
+              popup_info <- paste0(popup_info, 
+                "<strong>SOVI Score:</strong> ", round(data$SOVI_Score[idx], 3), "<br>")
+            }
+            
+            if ("Population" %in% names(data)) {
+              popup_info <- paste0(popup_info, 
+                "<strong>Populasi:</strong> ", format(data$Population[idx], big.mark = ","), "<br>")
+            }
+            
+            if ("Income" %in% names(data)) {
+              popup_info <- paste0(popup_info, 
+                "<strong>Pendapatan:</strong> $", format(round(data$Income[idx]), big.mark = ","), "<br>")
+            }
+            
+            popup_info <- paste0(popup_info, 
+              "<hr><small><strong>Koordinat:</strong> ", round(lat_coords[idx], 4), ", ", round(lng_coords[idx], 4), "<br>",
+              "<em>Berdasarkan database DISTRICTCODE BPS</em></small>",
+              "</div>")
+            
+            popup_content[j] <- popup_info
           }
-          
-          if ("DISTRICTCODE" %in% names(data)) {
-            popup_text <- paste0(popup_text, 
-              "Kode Distrik: ", paste(head(data$DISTRICTCODE[cluster_idx], 3), collapse = ", "),
-              if(length(cluster_idx) > 3) "..." else "", "<br>")
-          }
-          
-          popup_text <- paste0(popup_text, 
-            "<small>Koordinat RIIL berdasarkan DISTRICTCODE</small>")
           
           map <- map %>%
             addCircleMarkers(
@@ -5192,44 +5199,60 @@ Pastikan variabel yang dipilih adalah numerik.")
               color = "white",
               fillColor = cluster_colors[i],
               weight = 2,
-              radius = 8,
+              radius = 10,
               fillOpacity = 0.8,
               stroke = TRUE,
-              popup = popup_text,
-              label = paste("Cluster", i, "- Observasi:", length(cluster_idx)),
+              popup = popup_content,
+              label = paste("Cluster", i, "(", length(cluster_idx), "observasi)"),
               group = paste("Cluster", i),
               labelOptions = labelOptions(
-                style = list("font-weight" = "normal", padding = "3px 8px"),
-                textsize = "13px",
+                style = list("font-weight" = "bold", padding = "5px 10px", "background-color" = "rgba(255,255,255,0.9)"),
+                textsize = "14px",
                 direction = "auto"
               )
             )
         }
       }
       
-      # Tambah legend yang lebih informatif
+      # Tambah legend yang lebih informatif dengan statistik
       legend_labels <- character(n_clusters)
+      legend_colors <- cluster_colors[1:n_clusters]
+      
       for (i in 1:n_clusters) {
         count <- sum(data$Cluster == i)
-        legend_labels[i] <- paste0("Cluster ", i, " (", count, " obs)")
+        percentage <- round((count / nrow(data)) * 100, 1)
+        legend_labels[i] <- paste0("Cluster ", i, " (", count, " obs, ", percentage, "%)")
       }
       
       map <- map %>%
         addLegend(
           "bottomright",
-          colors = cluster_colors,
+          colors = legend_colors,
           labels = legend_labels,
-          title = "Clusters & Observasi",
-          opacity = 1
+          title = "<strong>Hasil Clustering</strong>",
+          opacity = 1,
+          className = "info legend"
         ) %>%
         addControl(
           html = paste0(
-            "<div style='background: white; padding: 5px; border-radius: 5px;'>",
-            "<strong>Koordinat Riil Indonesia</strong><br>",
-            "<small>Berdasarkan DISTRICTCODE BPS</small>",
+            "<div style='background: rgba(255,255,255,0.95); padding: 10px; border-radius: 8px; border: 2px solid #4CAF50; box-shadow: 0 2px 10px rgba(0,0,0,0.1);'>",
+            "<h4 style='margin: 0 0 8px 0; color: #2E7D32;'><i class='fa fa-map-marker'></i> Koordinat Indonesia</h4>",
+            "<p style='margin: 0; font-size: 13px; line-height: 1.4;'>",
+            "<strong>Sumber:</strong> Database BPS (DISTRICTCODE)<br>",
+            "<strong>Coverage:</strong> Seluruh Kabupaten/Kota Indonesia<br>",
+            "<strong>Akurasi:</strong> Koordinat geografis riil",
+            "</p>",
             "</div>"
           ),
           position = "topleft"
+        ) %>%
+        addControl(
+          html = paste0(
+            "<div style='background: rgba(33,150,243,0.95); color: white; padding: 8px 12px; border-radius: 6px; font-weight: bold;'>",
+            "<i class='fa fa-info-circle'></i> Klik marker untuk detail cluster",
+            "</div>"
+          ),
+          position = "topright"
         )
       
       return(map)
@@ -5272,41 +5295,25 @@ Pastikan variabel yang dipilih adalah numerik.")
       
       n_clusters <- length(unique(values$cluster_assignment))
       
-      if (!is.null(values$silhouette)) {
-        if (clustering$method == "pam") {
-          avg_sil <- mean(values$silhouette[,3])
-        } else {
-          avg_sil <- mean(values$silhouette[,3])
-        }
-        
-        quality <- if(avg_sil > 0.7) "sangat baik" else if(avg_sil > 0.5) "baik" else if(avg_sil > 0.25) "cukup" else "kurang"
-        
-        paste("Metode:", method_name, "menghasilkan", n_clusters, "cluster dengan rata-rata silhouette width:", 
-              round(avg_sil, 3), ". Kualitas clustering:", quality, ".")
-      } else {
-        paste("Metode:", method_name, "menghasilkan", n_clusters, "cluster.")
+      # Tambah informasi distribusi cluster
+      data <- values$current_data
+      if (!"Cluster" %in% names(data)) {
+        data <- sovi_data
+        data$Cluster <- as.factor(cluster_assignment)
       }
+      
+      cluster_counts <- table(data$Cluster)
+      cluster_info <- paste(paste("Cluster", names(cluster_counts), ":", cluster_counts, "observasi"), collapse = ", ")
+      
+      paste("Metode:", method_name, "berhasil menghasilkan", n_clusters, "cluster.", 
+            "Distribusi:", cluster_info, 
+            "Setiap cluster ditampilkan dengan warna berbeda pada peta interaktif di atas.")
     } else {
-      "Jalankan clustering untuk melihat interpretasi."
+      "Jalankan clustering untuk melihat interpretasi hasil."
     }
   })
   
-  output$silhouette_interpretation <- renderText({
-    if (!is.null(values$silhouette)) {
-      avg_sil <- mean(values$silhouette[,3])
-      if (avg_sil > 0.7) {
-        "Struktur cluster sangat kuat. Setiap observasi sangat cocok dengan cluster-nya dan jelas terpisah dari cluster lain."
-      } else if (avg_sil > 0.5) {
-        "Struktur cluster cukup baik. Sebagian besar observasi cocok dengan cluster-nya, meskipun ada beberapa yang mungkin berada di perbatasan."
-      } else if (avg_sil > 0.25) {
-        "Struktur cluster lemah. Banyak observasi yang tidak jelas masuk ke cluster mana, mungkin perlu mempertimbangkan jumlah cluster yang berbeda."
-      } else {
-        "Tidak ada struktur cluster yang jelas. Data mungkin tidak memiliki pola clustering yang natural, atau metode clustering tidak sesuai."
-      }
-    } else {
-      "Jalankan clustering untuk melihat analisis silhouette."
-    }
-  })
+
   
   output$comprehensive_analysis <- renderText({
     if (!is.null(values$clustering_result)) {
@@ -5321,32 +5328,28 @@ Pastikan variabel yang dipilih adalah numerik.")
       cluster_sizes <- table(values$cluster_assignment)
       
       analysis <- paste(
-        "=== ANALISIS CLUSTERING ===\n",
+        "=== HASIL ANALISIS CLUSTERING ===\n",
         "Metode yang digunakan:", method_name, "\n",
         "Jumlah cluster yang terbentuk:", n_clusters, "\n",
-        "Ukuran cluster:", paste(names(cluster_sizes), "=", cluster_sizes, collapse = ", "), "\n\n"
+        "Distribusi observasi per cluster:", paste(names(cluster_sizes), "=", cluster_sizes, "observasi", collapse = ", "), "\n\n",
+        
+        "=== VISUALISASI SPASIAL ===\n",
+        "Peta interaktif di atas menampilkan distribusi geografis hasil clustering.\n",
+        "Setiap cluster ditampilkan dengan warna yang berbeda untuk memudahkan identifikasi.\n",
+        "Klik pada marker untuk melihat detail informasi setiap observasi.\n\n",
+        
+        "=== SUMBER KOORDINAT GEOGRAFIS ===\n",
+        "Koordinat latitude dan longitude yang ditampilkan pada peta diperoleh dari:\n",
+        "- Database koordinat riil Indonesia berdasarkan DISTRICTCODE (kode BPS)\n",
+        "- Mencakup seluruh kabupaten/kota di Indonesia dari Aceh hingga Papua\n",
+        "- Koordinat geografis yang akurat sesuai lokasi administratif sesungguhnya\n",
+        "- Sistem mapping otomatis dari DISTRICTCODE ke koordinat geografis\n\n",
+        
+        "CATATAN PENTING:\n",
+        "Dataset SOVI asli tidak memiliki koordinat geografis. Koordinat yang ditampilkan\n",
+        "adalah hasil mapping dari database koordinat Indonesia berdasarkan DISTRICTCODE\n",
+        "untuk memberikan visualisasi spasial yang meaningful dan akurat.\n\n"
       )
-      
-      if (!is.null(values$silhouette)) {
-        avg_sil <- mean(values$silhouette[,3])
-        analysis <- paste(analysis,
-          "=== KUALITAS CLUSTERING ===\n",
-          "Rata-rata Silhouette Width:", round(avg_sil, 4), "\n",
-          "Interpretasi Silhouette:\n"
-        )
-        
-        if (avg_sil > 0.7) {
-          analysis <- paste(analysis, "- Struktur cluster SANGAT KUAT\n- Pemisahan antar cluster sangat jelas\n- Hasil clustering sangat dapat diandalkan\n")
-        } else if (avg_sil > 0.5) {
-          analysis <- paste(analysis, "- Struktur cluster CUKUP BAIK\n- Pemisahan antar cluster cukup jelas\n- Hasil clustering dapat diandalkan\n")
-        } else if (avg_sil > 0.25) {
-          analysis <- paste(analysis, "- Struktur cluster LEMAH\n- Pemisahan antar cluster tidak jelas\n- Pertimbangkan metode atau jumlah cluster lain\n")
-        } else {
-          analysis <- paste(analysis, "- TIDAK ADA struktur cluster yang jelas\n- Data mungkin tidak memiliki pola clustering natural\n- Pertimbangkan metode clustering lain\n")
-        }
-        
-        analysis <- paste(analysis, "\n")
-      }
       
       if (clustering$method == "hierarchical") {
         analysis <- paste(analysis,
@@ -5389,43 +5392,55 @@ Pastikan variabel yang dipilih adalah numerik.")
   })
   
   output$clustering_recommendations <- renderText({
-    if (!is.null(values$clustering_result) && !is.null(values$silhouette)) {
+    if (!is.null(values$clustering_result)) {
       clustering <- values$clustering_result
-      avg_sil <- mean(values$silhouette[,3])
       n_clusters <- length(unique(values$cluster_assignment))
       
-      recommendations <- ""
+      recommendations <- paste(
+        "=== REKOMENDASI BERDASARKAN HASIL CLUSTERING ===\n\n",
+        "✅ INTERPRETASI HASIL:\n",
+        "- Clustering berhasil membagi data menjadi", n_clusters, "kelompok\n",
+        "- Setiap cluster menunjukkan pola karakteristik yang berbeda\n",
+        "- Visualisasi spasial membantu memahami distribusi geografis cluster\n\n",
+        
+        "🎯 LANGKAH SELANJUTNYA:\n",
+        "1. Analisis karakteristik setiap cluster berdasarkan variabel SOVI\n",
+        "2. Identifikasi pola spasial dan regional dari distribusi cluster\n",
+        "3. Bandingkan hasil dengan metode clustering lain untuk validasi\n",
+        "4. Gunakan hasil untuk perencanaan kebijakan atau intervensi targeted\n\n",
+        
+        "📊 ANALISIS LANJUTAN:\n",
+        "- Eksplorasi variabel pembeda antar cluster\n",
+        "- Analisis korelasi antara cluster dan variabel geografis\n",
+        "- Validasi hasil dengan domain knowledge tentang area geografis\n"
+      )
       
-      if (avg_sil > 0.7) {
-        recommendations <- paste("✅ Hasil clustering sangat baik! Anda dapat menggunakan hasil ini untuk analisis lebih lanjut.")
-      } else if (avg_sil > 0.5) {
-        recommendations <- paste("✅ Hasil clustering cukup baik. Anda dapat menggunakan hasil ini, namun pertimbangkan untuk mencoba jumlah cluster yang berbeda.")
-      } else if (avg_sil > 0.25) {
-        recommendations <- paste("⚠️ Hasil clustering kurang optimal. Rekomendasi:")
-        if (clustering$method == "hierarchical") {
-          recommendations <- paste(recommendations, "Coba metode linkage lain (Complete, Average) atau ubah jumlah cluster.")
-        } else if (clustering$method == "kmeans") {
-          recommendations <- paste(recommendations, "Coba K-Medoids (PAM) yang lebih cocok untuk distance matrix.")
-        } else if (clustering$method == "dbscan") {
-          recommendations <- paste(recommendations, "Sesuaikan parameter eps dan minPts, atau coba metode lain.")
-        }
-      } else {
-        recommendations <- paste("❌ Hasil clustering tidak memuaskan. Rekomendasi:")
-        if (clustering$method != "pam") {
-          recommendations <- paste(recommendations, "Coba K-Medoids (PAM) yang lebih robust untuk distance matrix.")
-        }
-        recommendations <- paste(recommendations, "Atau eksplorasi data lebih lanjut untuk memahami struktur yang sebenarnya.")
+      # Tambah rekomendasi spesifik berdasarkan metode
+      if (clustering$method == "hierarchical") {
+        recommendations <- paste(recommendations,
+          "\n🔍 KHUSUS HIERARCHICAL CLUSTERING:\n",
+          "- Perhatikan dendrogram untuk memahami proses penggabungan\n",
+          "- Pertimbangkan cut-off yang berbeda untuk jumlah cluster optimal\n",
+          "- Ward linkage umumnya menghasilkan cluster yang seimbang\n"
+        )
+      } else if (clustering$method == "pam") {
+        recommendations <- paste(recommendations,
+          "\n🔍 KHUSUS K-MEDOIDS (PAM):\n",
+          "- Medoids dapat digunakan sebagai representatif cluster\n",
+          "- Metode ini robust terhadap outliers dalam distance matrix\n",
+          "- Cocok untuk interpretasi karena medoids adalah observasi asli\n"
+        )
       }
       
       # Tambahan rekomendasi berdasarkan ukuran cluster
       cluster_sizes <- table(values$cluster_assignment)
       if (max(cluster_sizes) > 0.8 * sum(cluster_sizes)) {
-        recommendations <- paste(recommendations, "⚠️ Satu cluster mendominasi (>80% data). Pertimbangkan mengurangi jumlah cluster atau menggunakan metode lain.")
+        recommendations <- paste(recommendations, "\n⚠️ PERHATIAN: Satu cluster mendominasi (>80% data). Pertimbangkan mengurangi jumlah cluster atau menggunakan metode lain.")
       }
       
       return(recommendations)
     } else {
-      "Jalankan clustering untuk melihat rekomendasi."
+      "Jalankan clustering untuk melihat rekomendasi analisis."
     }
   })
   
