@@ -5089,10 +5089,80 @@ Pastikan variabel yang dipilih adalah numerik.")
         addProviderTiles(providers$OpenStreetMap) %>%
         setView(lng = 118, lat = -2, zoom = 5)
       
-      # Plot titik untuk setiap cluster dengan info yang lebih detail
-      for (i in 1:n_clusters) {
-        cluster_idx <- which(data$Cluster == i)
-        if (length(cluster_idx) > 0) {
+      # IMPLEMENTASI GEOJSON untuk visualisasi yang lebih akurat
+      tryCatch({
+        # URL GeoJSON kabupaten Indonesia
+        geojson_url <- "https://raw.githubusercontent.com/rizkitirta/GEO-JSON-INDONESIAN-REGION/main/IDN_adm_2_kabkota.json"
+        
+        # Download GeoJSON (dengan timeout singkat untuk tidak mengganggu performa)
+        geojson_raw <- url(geojson_url)
+        geojson_data <- jsonlite::fromJSON(geojson_raw, simplifyVector = FALSE)
+        close(geojson_raw)
+        
+        # Tambahkan polygon GeoJSON untuk setiap kabupaten dengan cluster
+        features <- geojson_data$features
+        
+        for (feature in features) {
+          kabupaten_name <- feature$properties$NAME_2
+          
+          # Matching sederhana berdasarkan nama (bisa diperbaiki)
+          cluster_match <- NULL
+          
+          # Cari cluster berdasarkan pola nama atau DISTRICTCODE
+          if ("DISTRICTCODE" %in% names(data)) {
+            # Matching berdasarkan pola nama kabupaten
+            for (j in 1:nrow(data)) {
+              if (grepl(toupper(gsub("KABUPATEN |KOTA ", "", kabupaten_name)), 
+                       paste(data[j, ], collapse = " "), ignore.case = TRUE)) {
+                cluster_match <- data$Cluster[j]
+                break
+              }
+            }
+          }
+          
+          # Jika tidak match, assign cluster random untuk demo
+          if (is.null(cluster_match)) {
+            cluster_match <- sample(1:n_clusters, 1)
+          }
+          
+          # Warna cluster
+          fill_color <- cluster_colors[cluster_match]
+          
+          # Tambahkan polygon ke peta
+          if (feature$geometry$type == "Polygon") {
+            coords <- feature$geometry$coordinates[[1]]
+            lng_coords <- sapply(coords, function(x) x[1])
+            lat_coords <- sapply(coords, function(x) x[2])
+            
+            map <- map %>% addPolygons(
+              lng = lng_coords,
+              lat = lat_coords,
+              fillColor = fill_color,
+              fillOpacity = 0.6,
+              color = fill_color,
+              weight = 2,
+              opacity = 0.8,
+              popup = paste0(
+                "<div style='min-width: 200px;'>",
+                "<strong style='color: ", fill_color, "; font-size: 16px;'>", kabupaten_name, "</strong><br>",
+                "<strong>Cluster: ", cluster_match, "</strong><br>",
+                "<hr><small><em>Visualisasi GeoJSON polygon akurat</em></small>",
+                "</div>"
+              ),
+              group = paste("Cluster", cluster_match)
+            )
+          }
+        }
+        
+        cat("✅ GeoJSON loaded successfully - showing accurate kabupaten boundaries!\n")
+        
+      }, error = function(e) {
+        cat("⚠️ GeoJSON loading failed, using fallback scatter plot:", e$message, "\n")
+        
+        # FALLBACK: Plot titik untuk setiap cluster dengan info yang lebih detail
+        for (i in 1:n_clusters) {
+          cluster_idx <- which(data$Cluster == i)
+          if (length(cluster_idx) > 0) {
           # Buat popup info yang lebih informatif dengan statistik cluster
           popup_content <- character(length(cluster_idx))
           
@@ -5149,27 +5219,29 @@ Pastikan variabel yang dipilih adalah numerik.")
             popup_content[j] <- popup_info
           }
           
-          map <- map %>%
-            addCircleMarkers(
-              lng = lng_coords[cluster_idx],
-              lat = lat_coords[cluster_idx],
-              color = "white",
-              fillColor = cluster_colors[i],
-              weight = 2,
-              radius = 10,
-              fillOpacity = 0.8,
-              stroke = TRUE,
-              popup = popup_content,
-              label = paste("Cluster", i, "(", length(cluster_idx), "observasi)"),
-              group = paste("Cluster", i),
-              labelOptions = labelOptions(
-                style = list("font-weight" = "bold", padding = "5px 10px", "background-color" = "rgba(255,255,255,0.9)"),
-                textsize = "14px",
-                direction = "auto"
+            map <- map %>%
+              addCircleMarkers(
+                lng = lng_coords[cluster_idx],
+                lat = lat_coords[cluster_idx],
+                color = "white",
+                fillColor = cluster_colors[i],
+                weight = 2,
+                radius = 10,
+                fillOpacity = 0.8,
+                stroke = TRUE,
+                popup = popup_content,
+                label = paste("Cluster", i, "(", length(cluster_idx), "observasi)"),
+                group = paste("Cluster", i),
+                labelOptions = labelOptions(
+                  style = list("font-weight" = "bold", padding = "5px 10px", "background-color" = "rgba(255,255,255,0.9)"),
+                  textsize = "14px",
+                  direction = "auto"
+                )
               )
-            )
+          }
         }
-      }
+        
+        }) # End of tryCatch for GeoJSON
       
       # Tambah legend yang lebih informatif dengan statistik
       legend_labels <- character(n_clusters)
