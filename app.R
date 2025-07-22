@@ -330,6 +330,127 @@ cluster_assignment <- clustering_result$cluster
 sovi_data$Cluster <- as.factor(cluster_assignment)
 
 # =================== HELPER FUNCTIONS ===================
+
+# FGWC (Fuzzy Geographically Weighted Clustering) Implementation
+fgwc_clustering <- function(distance_matrix, coordinates, k = 3, m = 2.0, bandwidth = 100, max_iter = 100, tol = 1e-6) {
+  
+  # Convert distance matrix to data matrix using MDS for initial clustering
+  if (is.matrix(distance_matrix) || is.data.frame(distance_matrix)) {
+    dist_obj <- as.dist(distance_matrix)
+  } else {
+    dist_obj <- distance_matrix
+  }
+  
+  # MDS to get initial data points
+  mds_result <- cmdscale(dist_obj, k = 2)
+  data_points <- mds_result
+  n <- nrow(data_points)
+  
+  # Initialize cluster centers randomly
+  centers <- data_points[sample(n, k), ]
+  
+  # Initialize fuzzy membership matrix
+  U <- matrix(runif(n * k), nrow = n, ncol = k)
+  U <- U / rowSums(U)  # Normalize so each row sums to 1
+  
+  # Calculate geographical weight matrix
+  geo_weights <- matrix(0, nrow = n, ncol = n)
+  if (!is.null(coordinates) && nrow(coordinates) == n) {
+    for (i in 1:n) {
+      for (j in 1:n) {
+        if (i != j) {
+          # Calculate geographical distance (assume coordinates are lat/lon)
+          geo_dist <- sqrt((coordinates[i,1] - coordinates[j,1])^2 + 
+                          (coordinates[i,2] - coordinates[j,2])^2) * 111.32  # Convert to km approximately
+          geo_weights[i,j] <- exp(-(geo_dist^2) / (bandwidth^2))
+        } else {
+          geo_weights[i,j] <- 1.0
+        }
+      }
+    }
+  } else {
+    # If no coordinates, use identity matrix (no geographical weighting)
+    geo_weights <- diag(n)
+  }
+  
+  # FGWC iteration
+  for (iter in 1:max_iter) {
+    U_old <- U
+    
+    # Update cluster centers
+    for (j in 1:k) {
+      weighted_sum <- matrix(0, nrow = 1, ncol = ncol(data_points))
+      weight_total <- 0
+      
+      for (i in 1:n) {
+        geo_weight_sum <- sum(geo_weights[i,] * U[,j]^m)
+        weighted_sum <- weighted_sum + geo_weight_sum * data_points[i,]
+        weight_total <- weight_total + geo_weight_sum
+      }
+      
+      if (weight_total > 0) {
+        centers[j,] <- weighted_sum / weight_total
+      }
+    }
+    
+    # Update fuzzy membership matrix
+    for (i in 1:n) {
+      for (j in 1:k) {
+        # Calculate weighted distance
+        dist_to_center <- sum((data_points[i,] - centers[j,])^2)
+        
+        # Calculate denominator for fuzzy membership
+        denom <- 0
+        for (l in 1:k) {
+          dist_to_l <- sum((data_points[i,] - centers[l,])^2)
+          if (dist_to_l > 0) {
+            geo_influence <- sum(geo_weights[i,] * U[,l]^m)
+            denom <- denom + (dist_to_center / dist_to_l)^(1/(m-1)) * geo_influence
+          }
+        }
+        
+        if (denom > 0 && dist_to_center > 0) {
+          geo_influence <- sum(geo_weights[i,] * U[,j]^m)
+          U[i,j] <- geo_influence / denom
+        } else {
+          U[i,j] <- 1/k  # Equal membership if distance is 0
+        }
+      }
+      
+      # Normalize membership for each point
+      row_sum <- sum(U[i,])
+      if (row_sum > 0) {
+        U[i,] <- U[i,] / row_sum
+      }
+    }
+    
+    # Check convergence
+    if (max(abs(U - U_old)) < tol) {
+      break
+    }
+  }
+  
+  # Assign hard clusters based on maximum membership
+  hard_clusters <- apply(U, 1, which.max)
+  
+  # Calculate cluster statistics
+  silhouette_score <- NA
+  try({
+    if (requireNamespace("cluster", quietly = TRUE)) {
+      sil <- cluster::silhouette(hard_clusters, dist_obj)
+      silhouette_score <- mean(sil[,3])
+    }
+  }, silent = TRUE)
+  
+  return(list(
+    cluster = hard_clusters,
+    membership = U,
+    centers = centers,
+    iterations = iter,
+    silhouette = silhouette_score,
+    method = "FGWC"
+  ))
+}
 # Function to create statistical interpretations
 create_interpretation <- function(test_result, test_type) {
   p_value <- test_result$p.value
@@ -1923,7 +2044,9 @@ ui <- dashboardPage(
                                  ),
                                  
                                  h5("Abstrak dan Konteks"),
-                                 p("Dataset ini menyediakan Social Vulnerability Index (SoVI) untuk 514 kabupaten/kota di Indonesia pada tahun 2019. Data dikembangkan menggunakan 16 indikator sosio-ekonomi dan demografis yang dikumpulkan dari berbagai sumber resmi Indonesia. Dataset ini mendukung penelitian kerentanan sosial, perencanaan mitigasi bencana, dan pengembangan kebijakan berbasis bukti untuk mengurangi risiko bencana di Indonesia."),
+                                 p("Dataset ini menyediakan Social Vulnerability Index (SoVI) untuk 514 kabupaten/kota di Indonesia pada tahun 2019. Data dikembangkan menggunakan 16 indikator sosio-ekonomi dan demografis yang dikumpulkan dari Survei Sosial Ekonomi Nasional (SUSENAS) 2017 oleh BPS. ", 
+                                   strong("Paper ini secara khusus menyediakan distance matrix untuk melakukan Fuzzy Geographically Weighted Clustering (FGWC)"), 
+                                   ", sebuah metode clustering yang mempertimbangkan aspek geografis dan menghasilkan fuzzy membership. Data ini dapat digunakan untuk analisis lebih lanjut tentang kerentanan sosial guna mendorong penanggulangan bencana."),
                                  
                                  h5("Metodologi Pengembangan SoVI"),
                                  tags$ol(
@@ -2593,15 +2716,24 @@ ui <- dashboardPage(
                                  div(style = "background: #fef3c7; border: 1px solid #fbbf24; border-radius: 5px; padding: 10px; margin: 10px 0;",
                                      h6("Algoritma Clustering:"),
                                      tags$ul(
+                                       tags$li(strong("FGWC (Fuzzy Geographically Weighted):"), " ⭐ REKOMENDASI PAPER - Fuzzy clustering dengan geographical weighting"),
                                        tags$li(strong("Hierarchical Clustering:"), " Agglomerative dengan dendogram"),
                                        tags$li(strong("K-Means:"), " Partitioning berdasarkan centroid"),
                                        tags$li(strong("PAM (K-Medoids):"), " Robust terhadap outliers"),
                                        tags$li(strong("DBSCAN:"), " Density-based dengan noise detection")
                                      ),
+                                     h6("FGWC - Fitur Khusus:"),
+                                     tags$ul(
+                                       tags$li("Fuzzy membership matrix - setiap wilayah bisa belong ke multiple clusters"),
+                                       tags$li("Geographical weighting berdasarkan koordinat lat/lon"),
+                                       tags$li("Parameter: fuzziness (m), bandwidth geografis, iterasi konvergensi"),
+                                       tags$li("Output: hard clusters + fuzzy membership degrees")
+                                     ),
                                      h6("Input & Output:"),
                                      tags$ul(
-                                       tags$li("Input: Distance Matrix (512×512)"),
+                                       tags$li("Input: Distance Matrix (512×512) + koordinat geografis"),
                                        tags$li("Dendogram visualization untuk hierarchical"),
+                                       tags$li("Fuzzy membership table untuk FGWC"),
                                        tags$li("Cluster assignment dan interpretation"),
                                        tags$li("Spatial visualization pada peta Indonesia")
                                      )
@@ -2807,6 +2939,15 @@ ui <- dashboardPage(
             div(class = "interpretation-box",
               h5("Interpretasi Cluster:"),
               textOutput("cluster_interpretation")
+            ),
+            
+            conditionalPanel(
+              condition = "input.cluster_algorithm == 'fgwc'",
+              div(class = "info-box",
+                h5("Fuzzy Membership Matrix (Top 10):"),
+                p("Tabel menunjukkan derajat keanggotaan fuzzy setiap wilayah terhadap cluster. Nilai mendekati 1 menunjukkan keanggotaan yang kuat."),
+                DT::dataTableOutput("fgwc_membership_table")
+              )
             )
           ),
           
@@ -5227,6 +5368,31 @@ Pastikan variabel yang dipilih adalah numerik.")
       eps <- input$eps
       minPts <- input$minPts
       clustering <- do_clustering(distance_matrix, cluster_method = cluster_method, eps = eps, minPts = minPts)
+    } else if (cluster_method == "fgwc") {
+      k <- as.numeric(input$n_cluster)
+      m <- input$fgwc_m
+      bandwidth <- input$fgwc_bandwidth
+      max_iter <- input$fgwc_maxiter
+      tol <- input$fgwc_tol
+      
+      # Get coordinates for FGWC
+      coordinates <- NULL
+      if (!is.null(sovi_data) && "Latitude" %in% names(sovi_data) && "Longitude" %in% names(sovi_data)) {
+        coordinates <- data.frame(
+          lat = sovi_data$Latitude,
+          lon = sovi_data$Longitude
+        )
+        # Remove rows with missing coordinates
+        valid_coords <- complete.cases(coordinates)
+        if (sum(valid_coords) > 0) {
+          coordinates <- coordinates[valid_coords, ]
+        } else {
+          coordinates <- NULL
+        }
+      }
+      
+      clustering <- fgwc_clustering(distance_matrix, coordinates, k = k, m = m, 
+                                   bandwidth = bandwidth, max_iter = max_iter, tol = tol)
     } else {
       k <- as.numeric(input$n_cluster)
       if (cluster_method == "hierarchical") {
@@ -5660,7 +5826,8 @@ Pastikan variabel yang dipilih adalah numerik.")
                            "hierarchical" = "Hierarchical Clustering",
                            "kmeans" = "K-Means",
                            "pam" = "K-Medoids (PAM)",
-                           "dbscan" = "DBSCAN")
+                           "dbscan" = "DBSCAN",
+                           "FGWC" = "Fuzzy Geographically Weighted Clustering (FGWC)")
       
       n_clusters <- length(unique(values$cluster_assignment))
       
@@ -5674,14 +5841,68 @@ Pastikan variabel yang dipilih adalah numerik.")
       cluster_counts <- table(data$Cluster)
       cluster_info <- paste(paste("Cluster", names(cluster_counts), ":", cluster_counts, "observasi"), collapse = ", ")
       
-      paste("Metode:", method_name, "berhasil menghasilkan", n_clusters, "cluster.", 
-            "Distribusi:", cluster_info, 
-            "Setiap cluster ditampilkan dengan warna berbeda pada peta interaktif di atas.")
+      # Tambahan khusus untuk FGWC
+      if (clustering$method == "FGWC") {
+        convergence_info <- paste("Konvergen setelah", clustering$iterations, "iterasi.")
+        
+        # Hitung rata-rata fuzzy membership
+        if (!is.null(clustering$membership)) {
+          avg_membership <- apply(clustering$membership, 2, mean)
+          membership_info <- paste("Rata-rata fuzzy membership per cluster:", 
+                                 paste(paste("C", 1:length(avg_membership), ":", 
+                                           round(avg_membership, 3)), collapse = ", "))
+        } else {
+          membership_info <- ""
+        }
+        
+        paste("Metode:", method_name, "berhasil menghasilkan", n_clusters, "cluster.", 
+              convergence_info, membership_info, "Distribusi:", cluster_info, 
+              "FGWC mempertimbangkan lokasi geografis dan menghasilkan fuzzy membership untuk setiap wilayah.")
+      } else {
+        paste("Metode:", method_name, "berhasil menghasilkan", n_clusters, "cluster.", 
+              "Distribusi:", cluster_info, 
+              "Setiap cluster ditampilkan dengan warna berbeda pada peta interaktif di atas.")
+      }
     } else {
       "Jalankan clustering untuk melihat interpretasi hasil."
     }
   })
   
+  # FGWC Fuzzy Membership Table
+  output$fgwc_membership_table <- DT::renderDataTable({
+    if (!is.null(values$clustering_result) && values$clustering_result$method == "FGWC") {
+      clustering <- values$clustering_result
+      if (!is.null(clustering$membership)) {
+        # Create membership table with district names
+        membership_df <- as.data.frame(clustering$membership)
+        colnames(membership_df) <- paste("Cluster", 1:ncol(membership_df))
+        
+        # Add district information if available
+        if (!is.null(sovi_data) && "DISTRICTCODE" %in% names(sovi_data)) {
+          membership_df$DISTRICTCODE <- sovi_data$DISTRICTCODE[1:nrow(membership_df)]
+        } else {
+          membership_df$District_ID <- 1:nrow(membership_df)
+        }
+        
+        # Add hard cluster assignment
+        membership_df$Hard_Cluster <- clustering$cluster
+        
+        # Round membership values
+        cluster_cols <- grep("Cluster", names(membership_df))
+        membership_df[cluster_cols] <- round(membership_df[cluster_cols], 4)
+        
+        # Reorder columns
+        if ("DISTRICTCODE" %in% names(membership_df)) {
+          membership_df <- membership_df[c("DISTRICTCODE", "Hard_Cluster", paste("Cluster", 1:(ncol(membership_df)-2)))]
+        } else {
+          membership_df <- membership_df[c("District_ID", "Hard_Cluster", paste("Cluster", 1:(ncol(membership_df)-2)))]
+        }
+        
+        # Show top 10 rows
+        membership_df[1:min(10, nrow(membership_df)), ]
+      }
+    }
+  }, options = list(pageLength = 10, scrollX = TRUE, dom = 'tip'))
 
   
   output$comprehensive_analysis <- renderText({
