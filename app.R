@@ -2465,177 +2465,179 @@ ui <- dashboardPage(
                         h4("📈 Kegiatan Statistik dan Analisis dalam Dashboard", style = "color: #6366f1; margin-top: 30px;"),
                         tags$div(class = "info-box", style = "border-left: 4px solid #6366f1; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);",
                                  
-                                 h5("1. Statistik Deskriptif"),
+                                 h5("1. Manajemen Data"),
                                  div(style = "background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 5px; padding: 10px; margin: 10px 0;",
+                                     h6("Fitur Data Management:"),
+                                     tags$ul(
+                                       tags$li(strong("Data Loading:"), " Import data SOVI dan Distance Matrix dari URL eksternal"),
+                                       tags$li(strong("Data Preview:"), " Tampilan head/tail data dengan informasi struktur"),
+                                       tags$li(strong("Missing Values Detection:"), " Identifikasi dan handling data kosong"),
+                                       tags$li(strong("Data Validation:"), " Pengecekan konsistensi DISTRICTCODE"),
+                                       tags$li(strong("Variable Classification:"), " Klasifikasi otomatis variabel numerik/kategorik")
+                                     )
+                                 ),
+                                 
+                                 h5("2. Statistik Deskriptif"),
+                                 div(style = "background: #f0fdf4; border: 1px solid #86efac; border-radius: 5px; padding: 10px; margin: 10px 0;",
                                      h6("Ukuran Pemusatan dan Penyebaran:"),
                                      tags$ul(
-                                       tags$li(strong("Mean (Rata-rata):"), " Nilai tengah distribusi setiap variabel SOVI"),
-                                       tags$li(strong("Median:"), " Nilai tengah data yang telah diurutkan"),
-                                       tags$li(strong("Standard Deviation:"), " Ukuran penyebaran data dari rata-rata"),
-                                       tags$li(strong("Minimum & Maximum:"), " Nilai terkecil dan terbesar"),
-                                       tags$li(strong("Quartiles (Q1, Q3):"), " Pembagian data menjadi 4 bagian sama besar")
+                                       tags$li(strong("Mean, Median, Mode:"), " Ukuran tendensi sentral untuk setiap variabel"),
+                                       tags$li(strong("Standard Deviation, Variance:"), " Ukuran variabilitas data"),
+                                       tags$li(strong("Min, Max, Range:"), " Nilai ekstrem dan rentang data"),
+                                       tags$li(strong("Quartiles (Q1, Q2, Q3):"), " Pembagian data menjadi 4 bagian"),
+                                       tags$li(strong("Skewness, Kurtosis:"), " Ukuran bentuk distribusi")
                                      ),
-                                     h6("Implementasi dalam Dashboard:"),
+                                     h6("Implementasi:"),
                                      tags$ul(
-                                       tags$li("Tabel summary statistics untuk semua variabel SOVI"),
-                                       tags$li("Visualisasi distribusi dengan histogram dan box plot"),
-                                       tags$li("Identifikasi outliers dan nilai ekstrem")
+                                       tags$li("Summary statistics table untuk semua variabel SOVI"),
+                                       tags$li("Histogram dan box plot untuk visualisasi distribusi"),
+                                       tags$li("Identifikasi outliers dan missing values")
                                      )
                                  ),
                                  
-                                 h5("2. Analisis Korelasi"),
-                                 div(style = "background: #f0fdf4; border: 1px solid #86efac; border-radius: 5px; padding: 10px; margin: 10px 0;",
-                                     h6("Correlation Matrix Analysis:"),
-                                     tags$ul(
-                                       tags$li(strong("Pearson Correlation:"), " Mengukur hubungan linear antar variabel SOVI"),
-                                       tags$li(strong("Correlation Heatmap:"), " Visualisasi matriks korelasi dengan color coding"),
-                                       tags$li(strong("Multicollinearity Detection:"), " Identifikasi variabel yang saling berkorelasi tinggi")
-                                     ),
-                                     h6("Interpretasi Korelasi:"),
-                                     tags$ul(
-                                       tags$li("r > 0.7: Korelasi positif kuat"),
-                                       tags$li("r < -0.7: Korelasi negatif kuat"),
-                                       tags$li("-0.3 < r < 0.3: Korelasi lemah"),
-                                       tags$li("Identifikasi pola hubungan antar indikator kerentanan")
-                                     )
-                                 ),
-                                 
-                                 h5("3. Analisis Clustering (Unsupervised Learning)"),
+                                 h5("3. Visualisasi Data Interaktif"),
                                  div(style = "background: #fef3c7; border: 1px solid #fbbf24; border-radius: 5px; padding: 10px; margin: 10px 0;",
-                                     h6("Algoritma Clustering yang Diimplementasi:"),
+                                     h6("Plotly Interactive Charts:"),
                                      tags$ul(
-                                       tags$li(strong("K-Means Clustering:"), " Partitioning method berdasarkan centroid"),
-                                       tags$li(strong("Hierarchical Clustering:"), " Agglomerative clustering dengan Ward linkage"),
-                                       tags$li(strong("PAM (K-Medoids):"), " Partitioning Around Medoids, robust terhadap outliers"),
-                                       tags$li(strong("DBSCAN:"), " Density-based clustering untuk deteksi outliers")
+                                       tags$li(strong("Scatter Plot:"), " Hubungan antar variabel dengan hover information"),
+                                       tags$li(strong("Box Plot Interaktif:"), " Perbandingan distribusi dengan zoom/pan"),
+                                       tags$li(strong("Histogram Dinamis:"), " Distribusi frekuensi dengan filter"),
+                                       tags$li(strong("Correlation Heatmap:"), " Matriks korelasi dengan color coding")
                                      ),
-                                     h6("Input Data untuk Clustering:"),
+                                     h6("Features:"),
                                      tags$ul(
-                                       tags$li("Distance Matrix (512×512) untuk clustering berbasis dissimilarity"),
-                                       tags$li("SOVI Variables untuk clustering berbasis karakteristik langsung"),
-                                       tags$li("Standardisasi data untuk menghindari bias skala variabel")
-                                     ),
-                                     h6("Validasi dan Evaluasi Cluster:"),
-                                     tags$ul(
-                                       tags$li(strong("Silhouette Analysis:"), " Mengukur kualitas clustering"),
-                                       tags$li(strong("Within-cluster Sum of Squares:"), " Mengukur compactness cluster"),
-                                       tags$li(strong("Elbow Method:"), " Menentukan jumlah cluster optimal")
+                                       tags$li("Zoom, pan, hover, selection pada semua plot"),
+                                       tags$li("Download plot dalam format PNG/HTML"),
+                                       tags$li("Dynamic filtering berdasarkan variabel kategorik")
                                      )
                                  ),
                                  
-                                 h5("4. Analisis Spasial (Spatial Statistics)"),
+                                 h5("4. Analisis Peta SOVI (Spatial Visualization)"),
                                  div(style = "background: #fdf2f8; border: 1px solid #f472b6; border-radius: 5px; padding: 10px; margin: 10px 0;",
-                                     h6("Teknik Analisis Spasial:"),
+                                     h6("Leaflet Interactive Maps:"),
                                      tags$ul(
-                                       tags$li(strong("Spatial Clustering:"), " Pengelompokan berdasarkan kedekatan geografis dan karakteristik"),
-                                       tags$li(strong("Hotspot Analysis:"), " Identifikasi area dengan konsentrasi nilai tinggi/rendah"),
-                                       tags$li(strong("Geographic Visualization:"), " Pemetaan hasil clustering di peta Indonesia"),
-                                       tags$li(strong("Coordinate Mapping:"), " Transformasi DISTRICTCODE ke koordinat geografis")
+                                       tags$li(strong("Choropleth Maps:"), " Peta tematik berdasarkan variabel SOVI"),
+                                       tags$li(strong("Dynamic Color Palette:"), " Skema warna berdasarkan nilai variabel"),
+                                       tags$li(strong("Interactive Popup:"), " Detail informasi kabupaten/kota"),
+                                       tags$li(strong("Variable Selection:"), " Dropdown untuk memilih variabel SOVI"),
+                                       tags$li(strong("Map Type Selection:"), " Pilihan antara Choropleth dan Point markers")
                                      ),
-                                     h6("Sistem Koordinat:"),
+                                     h6("Coordinate System:"),
                                      tags$ul(
                                        tags$li("WGS84 Geographic Coordinate System"),
-                                       tags$li("Latitude: -11° to 6° (Indonesia bounds)"),
-                                       tags$li("Longitude: 95° to 141° (Indonesia bounds)"),
-                                       tags$li("Proyeksi Web Mercator untuk visualisasi")
+                                       tags$li("Indonesia bounds: Lat -11° to 6°, Lon 95° to 141°"),
+                                       tags$li("DISTRICTCODE to coordinate mapping"),
+                                       tags$li("⚠️ Koordinat saat ini belum sepenuhnya akurat")
                                      )
                                  ),
                                  
-                                 h5("5. Dimensionality Reduction"),
-                                 div(style = "background: #f0f4ff; border: 1px solid #8b5cf6; border-radius: 5px; padding: 10px; margin: 10px 0;",
-                                     h6("Principal Component Analysis (PCA):"),
-                                     tags$ul(
-                                       tags$li(strong("4 Komponen Utama SOVI:"), " Reduksi dari 16 variabel menjadi 4 faktor"),
-                                       tags$li(strong("Variance Explained:"), " Proporsi varians yang dijelaskan setiap komponen"),
-                                       tags$li(strong("Component Loading:"), " Kontribusi setiap variabel terhadap komponen"),
-                                       tags$li(strong("Scree Plot:"), " Visualisasi eigenvalues untuk menentukan jumlah komponen")
-                                     ),
-                                     h6("Multidimensional Scaling (MDS):"),
-                                     tags$ul(
-                                       tags$li(strong("Classical MDS:"), " Proyeksi distance matrix ke ruang 2D"),
-                                       tags$li(strong("Stress Function:"), " Mengukur kualitas proyeksi MDS"),
-                                       tags$li(strong("Geographic Pattern:"), " Hasil MDS yang menyerupai peta Indonesia")
-                                     )
-                                 ),
-                                 
-                                 h5("6. Statistical Testing dan Validation"),
+                                 h5("5. Uji Asumsi Statistik"),
                                  div(style = "background: #ecfdf5; border: 1px solid #10b981; border-radius: 5px; padding: 10px; margin: 10px 0;",
                                      h6("Uji Normalitas:"),
                                      tags$ul(
-                                       tags$li(strong("Shapiro-Wilk Test:"), " Uji normalitas untuk sampel kecil"),
-                                       tags$li(strong("Kolmogorov-Smirnov Test:"), " Uji normalitas untuk sampel besar"),
-                                       tags$li(strong("Anderson-Darling Test:"), " Uji normalitas yang sensitif terhadap tail"),
-                                       tags$li(strong("Q-Q Plot:"), " Visualisasi distribusi vs distribusi normal")
+                                       tags$li(strong("Shapiro-Wilk Test:"), " Untuk sampel ≤ 5000 observasi"),
+                                       tags$li(strong("Anderson-Darling Test:"), " Alternative untuk sampel besar"),
+                                       tags$li(strong("Q-Q Plot:"), " Visualisasi perbandingan dengan distribusi normal"),
+                                       tags$li(strong("Histogram dengan Normal Curve:"), " Overlay kurva normal")
                                      ),
                                      h6("Uji Homogenitas:"),
                                      tags$ul(
-                                       tags$li(strong("Levene's Test:"), " Uji kesamaan varians antar kelompok"),
-                                       tags$li(strong("Bartlett's Test:"), " Uji homogenitas varians (asumsi normalitas)"),
-                                       tags$li(strong("Fligner-Killeen Test:"), " Uji non-parametrik untuk homogenitas")
+                                       tags$li(strong("Levene's Test:"), " Robust terhadap non-normalitas"),
+                                       tags$li(strong("Bartlett's Test:"), " Sensitif terhadap normalitas (opsional)")
                                      )
                                  ),
                                  
-                                 h5("7. Inferential Statistics"),
+                                 h5("6. Statistik Inferensia"),
                                  div(style = "background: #fef7ff; border: 1px solid #d946ef; border-radius: 5px; padding: 10px; margin: 10px 0;",
-                                     h6("Uji Beda Rata-rata:"),
+                                     h6("Uji Rata-rata:"),
                                      tags$ul(
-                                       tags$li(strong("One Sample t-test:"), " Membandingkan rata-rata sampel dengan nilai populasi"),
-                                       tags$li(strong("Independent t-test:"), " Membandingkan rata-rata 2 kelompok independen"),
-                                       tags$li(strong("Paired t-test:"), " Membandingkan rata-rata 2 pengukuran berpasangan"),
-                                       tags$li(strong("Mann-Whitney U Test:"), " Uji non-parametrik untuk 2 kelompok independen")
+                                       tags$li(strong("One Sample t-test:"), " Membandingkan rata-rata dengan nilai hipotesis"),
+                                       tags$li(strong("Independent t-test:"), " Perbandingan 2 kelompok independen"),
+                                       tags$li(strong("Paired t-test:"), " Perbandingan 2 pengukuran berpasangan"),
+                                       tags$li(strong("Welch t-test:"), " t-test untuk varians tidak sama")
+                                     ),
+                                     h6("Uji Proporsi & Varians:"),
+                                     tags$ul(
+                                       tags$li(strong("One Sample Proportion Test:"), " Uji proporsi satu sampel"),
+                                       tags$li(strong("Two Sample Proportion Test:"), " Perbandingan proporsi dua kelompok"),
+                                       tags$li(strong("One Sample Variance Test:"), " Uji varians satu sampel"),
+                                       tags$li(strong("F-test for Variance:"), " Perbandingan varians dua kelompok")
                                      ),
                                      h6("Analysis of Variance (ANOVA):"),
                                      tags$ul(
-                                       tags$li(strong("One-way ANOVA:"), " Membandingkan rata-rata lebih dari 2 kelompok"),
-                                       tags$li(strong("Kruskal-Wallis Test:"), " ANOVA non-parametrik"),
-                                       tags$li(strong("Post-hoc Tests:"), " Tukey HSD, Bonferroni untuk multiple comparison"),
-                                       tags$li(strong("Effect Size:"), " Eta-squared untuk mengukur besar efek")
+                                       tags$li(strong("One-way ANOVA:"), " Perbandingan > 2 kelompok"),
+                                       tags$li(strong("Two-way ANOVA:"), " ANOVA dengan 2 faktor ± interaksi"),
+                                       tags$li(strong("Post-hoc Tests:"), " Tukey HSD untuk multiple comparison")
                                      )
                                  ),
                                  
-                                 h5("8. Regression Analysis"),
+                                 h5("7. Analisis Regresi Linear"),
                                  div(style = "background: #fffbeb; border: 1px solid #f59e0b; border-radius: 5px; padding: 10px; margin: 10px 0;",
-                                     h6("Linear Regression:"),
+                                     h6("Linear Regression Models:"),
                                      tags$ul(
-                                       tags$li(strong("Simple Linear Regression:"), " Hubungan 1 prediktor dengan 1 outcome"),
-                                       tags$li(strong("Multiple Linear Regression:"), " Hubungan multiple predictors dengan 1 outcome"),
-                                       tags$li(strong("Polynomial Regression:"), " Hubungan non-linear dengan transformasi polynomial"),
-                                       tags$li(strong("Stepwise Regression:"), " Seleksi variabel otomatis (forward/backward)")
+                                       tags$li(strong("Simple Linear Regression:"), " Y = β₀ + β₁X + ε"),
+                                       tags$li(strong("Multiple Linear Regression:"), " Y = β₀ + β₁X₁ + β₂X₂ + ... + ε"),
+                                       tags$li(strong("Model Summary:"), " R², Adjusted R², F-statistic, p-values"),
+                                       tags$li(strong("Coefficient Analysis:"), " Interpretasi slope dan intercept")
                                      ),
-                                     h6("Model Diagnostics:"),
+                                     h6("Diagnostic Plots:"),
                                      tags$ul(
-                                       tags$li(strong("R-squared:"), " Proporsi varians yang dijelaskan model"),
-                                       tags$li(strong("Adjusted R-squared:"), " R-squared yang disesuaikan dengan jumlah prediktor"),
-                                       tags$li(strong("F-statistic:"), " Uji signifikansi model secara keseluruhan"),
-                                       tags$li(strong("Residual Analysis:"), " Analisis sisa untuk validasi asumsi"),
-                                       tags$li(strong("Cook's Distance:"), " Deteksi influential observations"),
-                                       tags$li(strong("VIF (Variance Inflation Factor):"), " Deteksi multicollinearity")
+                                       tags$li(strong("Residuals vs Fitted:"), " Cek linearitas dan homoskedastisitas"),
+                                       tags$li(strong("Q-Q Plot of Residuals:"), " Normalitas residuals"),
+                                       tags$li(strong("Cook's Distance:"), " Deteksi influential points"),
+                                       tags$li(strong("Leverage vs Residuals:"), " High leverage points")
                                      )
                                  ),
                                  
-                                 h5("9. Data Visualization dan Interactive Graphics"),
+                                 h5("8. Analisis Clustering"),
+                                 div(style = "background: #fef3c7; border: 1px solid #fbbf24; border-radius: 5px; padding: 10px; margin: 10px 0;",
+                                     h6("Algoritma Clustering:"),
+                                     tags$ul(
+                                       tags$li(strong("Hierarchical Clustering:"), " Agglomerative dengan dendogram"),
+                                       tags$li(strong("K-Means:"), " Partitioning berdasarkan centroid"),
+                                       tags$li(strong("PAM (K-Medoids):"), " Robust terhadap outliers"),
+                                       tags$li(strong("DBSCAN:"), " Density-based dengan noise detection")
+                                     ),
+                                     h6("Input & Output:"),
+                                     tags$ul(
+                                       tags$li("Input: Distance Matrix (512×512)"),
+                                       tags$li("Dendogram visualization untuk hierarchical"),
+                                       tags$li("Cluster assignment dan interpretation"),
+                                       tags$li("Spatial visualization pada peta Indonesia")
+                                     )
+                                 ),
+                                 
+                                 h5("9. Analisis Distance Matrix"),
+                                 div(style = "background: #f0f4ff; border: 1px solid #8b5cf6; border-radius: 5px; padding: 10px; margin: 10px 0;",
+                                     h6("Distance Analysis:"),
+                                     tags$ul(
+                                       tags$li(strong("Distance Distribution:"), " Histogram dan summary statistics"),
+                                       tags$li(strong("Distance Heatmap:"), " Visualisasi matriks dengan color coding"),
+                                       tags$li(strong("Multidimensional Scaling (MDS):"), " Proyeksi ke ruang 2D"),
+                                       tags$li(strong("Nearest Neighbor:"), " Identifikasi wilayah terdekat")
+                                     ),
+                                     h6("MDS Implementation:"),
+                                     tags$ul(
+                                       tags$li("Classical MDS menggunakan cmdscale()"),
+                                       tags$li("2D scatter plot hasil proyeksi"),
+                                       tags$li("Stress calculation untuk quality assessment")
+                                     )
+                                 ),
+                                 
+                                 h5("10. Export & Documentation"),
                                  div(style = "background: #f1f5f9; border: 1px solid #64748b; border-radius: 5px; padding: 10px; margin: 10px 0;",
-                                     h6("Static Visualizations (ggplot2):"),
+                                     h6("Download Features:"),
                                      tags$ul(
-                                       tags$li(strong("Scatter Plots:"), " Hubungan antar variabel numerik"),
-                                       tags$li(strong("Box Plots:"), " Distribusi dan outlier detection"),
-                                       tags$li(strong("Histograms:"), " Distribusi frekuensi variabel"),
-                                       tags$li(strong("Correlation Heatmaps:"), " Matriks korelasi dengan color coding"),
-                                       tags$li(strong("Cluster Dendrograms:"), " Visualisasi hierarchical clustering"),
-                                       tags$li(strong("PCA Biplots:"), " Visualisasi hasil PCA dengan loading vectors")
+                                       tags$li(strong("Word Reports:"), " Hasil analisis dalam format .docx"),
+                                       tags$li(strong("Plot Export:"), " Save plots sebagai PNG/HTML"),
+                                       tags$li(strong("Data Export:"), " Export processed data"),
+                                       tags$li(strong("Metadata Report:"), " Dokumentasi lengkap dashboard")
                                      ),
-                                     h6("Interactive Visualizations (Plotly):"),
+                                     h6("Interactive Features:"),
                                      tags$ul(
-                                       tags$li(strong("Interactive Scatter:"), " Zoom, pan, hover information"),
-                                       tags$li(strong("3D Plots:"), " Visualisasi multidimensional"),
-                                       tags$li(strong("Plotly Dashboard:"), " Interactive statistical dashboard")
-                                     ),
-                                     h6("Geographic Visualizations (Leaflet):"),
-                                     tags$ul(
-                                       tags$li(strong("Interactive Maps:"), " Peta Indonesia dengan zoom dan pan"),
-                                       tags$li(strong("Choropleth Maps:"), " Peta tematik berdasarkan nilai variabel"),
-                                       tags$li(strong("Cluster Maps:"), " Visualisasi hasil clustering di peta"),
-                                       tags$li(strong("Marker Clustering:"), " Pengelompokan marker untuk performa"),
+                                       tags$li("Plotly interactive charts dengan zoom/pan/hover"),
+                                       tags$li("Leaflet interactive maps dengan layer control"),
+                                       tags$li("Dynamic filtering dan variable selection"),
                                        tags$li(strong("Popup Information:"), " Detail informasi kabupaten/kota"),
                                        tags$li(strong("Layer Control:"), " Toggle visibility berbagai layer peta"),
                                        tags$li(strong("GeoJSON Integration:"), " Polygon boundaries untuk visualisasi akurat")
@@ -2666,6 +2668,59 @@ ui <- dashboardPage(
                                    tags$li("Perhatikan skala pengukuran variabel"),
                                    tags$li("Validasi hasil clustering dengan silhouette analysis"),
                                    tags$li("Kombinasikan multiple analisis untuk insight yang komprehensif")
+                                 )
+                        ),
+                        
+                        hr(),
+                        
+                        # SITASI DAN REFERENSI
+                        h4("📚 Sitasi dan Referensi", style = "color: #ed8936; margin-top: 30px;"),
+                        tags$div(class = "info-box", style = "border-left: 4px solid #ed8936; background: linear-gradient(135deg, #fffaf0 0%, #fef5e7 100%);",
+                                 
+                                 h5("Cara Mengutip Dashboard Ini"),
+                                 div(style = "background: #f7fafc; border: 1px solid #cbd5e1; border-radius: 5px; padding: 15px; margin: 10px 0; font-family: 'Courier New', monospace; font-size: 12px;",
+                                     p(strong("Format APA:")),
+                                     p("[Author]. (2024). Dashboard Analisis Social Vulnerability Index (SOVI) Indonesia. R Shiny Application. Retrieved from [URL]"),
+                                     
+                                     p(strong("Format IEEE:")),
+                                     p("[Author], \"Dashboard Analisis Social Vulnerability Index (SOVI) Indonesia,\" R Shiny Application, 2024. [Online]. Available: [URL]")
+                                 ),
+                                 
+                                 h5("Referensi Data Utama"),
+                                 tags$ul(
+                                   tags$li(strong("Paper Utama:"), " Fitri, A. F. S., & Adhari, L. M. (2021). Social vulnerability index dataset for Indonesia. Data in Brief, 39, 107660. DOI: ", 
+                                           tags$a(href = "https://doi.org/10.1016/j.dib.2021.107660", "10.1016/j.dib.2021.107660", target = "_blank")),
+                                   tags$li(strong("Data SOVI:"), " ", 
+                                           tags$a(href = "https://raw.githubusercontent.com/bmlmcmc/naspaclust/main/data/sovi_data.csv", "SOVI Dataset", target = "_blank")),
+                                   tags$li(strong("Data Distance Matrix:"), " ", 
+                                           tags$a(href = "https://raw.githubusercontent.com/bmlmcmc/naspaclust/main/data/distance.csv", "Distance Matrix", target = "_blank"))
+                                 ),
+                                 
+                                 h5("Sumber Data Koordinat"),
+                                 tags$ul(
+                                   tags$li(strong("Indonesia Location Data:"), " ", 
+                                           tags$a(href = "https://github.com/coll-j/indonesia-locations-data", "GitHub Repository", target = "_blank")),
+                                   tags$li(strong("Village Coordinates:"), " Aggregated from village-level data to kabupaten centroids"),
+                                   tags$li(strong("Status:"), " ⚠️ Koordinat masih dalam tahap penyempurnaan untuk akurasi optimal")
+                                 ),
+                                 
+                                 h5("Software dan Package"),
+                                 tags$ul(
+                                   tags$li(strong("R Version:"), " R 4.0+ (recommended)"),
+                                   tags$li(strong("Shiny Framework:"), " shiny, shinydashboard"),
+                                   tags$li(strong("Visualization:"), " leaflet, plotly, DT"),
+                                   tags$li(strong("Statistical Analysis:"), " cluster, car, stats"),
+                                   tags$li(strong("Data Processing:"), " dplyr, jsonlite")
+                                 ),
+                                 
+                                 h5("Disclaimer"),
+                                 div(style = "background: #fef2f2; border: 1px solid #fca5a5; border-radius: 5px; padding: 10px; margin: 10px 0; color: #991b1b;",
+                                     tags$ul(
+                                       tags$li("Dashboard ini dibuat untuk tujuan edukasi dan penelitian"),
+                                       tags$li("Koordinat geografis belum sepenuhnya akurat dan masih dalam tahap penyempurnaan"),
+                                       tags$li("Hasil analisis harus diinterpretasi dengan mempertimbangkan keterbatasan data"),
+                                       tags$li("Penggunaan untuk keperluan komersial memerlukan izin dari pemilik data")
+                                     )
                                  )
                         ),
                         
