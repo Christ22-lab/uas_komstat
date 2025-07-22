@@ -2754,7 +2754,8 @@ ui <- dashboardPage(
                 "Hierarchical Clustering" = "hierarchical",
                 "K-Means" = "kmeans",
                 "K-Medoids (PAM)" = "pam",
-                "DBSCAN" = "dbscan"
+                "DBSCAN" = "dbscan",
+                "FGWC (Fuzzy Geographically Weighted)" = "fgwc"
               ), selected = "hierarchical"),
             
             conditionalPanel(
@@ -2781,12 +2782,21 @@ ui <- dashboardPage(
               numericInput("minPts", "Min Points:", value = 5, min = 2, max = 20, step = 1)
             ),
             
+            conditionalPanel(
+              condition = "input.cluster_algorithm == 'fgwc'",
+              numericInput("fgwc_m", "Fuzziness Parameter (m):", value = 2.0, min = 1.1, max = 5.0, step = 0.1),
+              numericInput("fgwc_bandwidth", "Geographical Bandwidth (km):", value = 100, min = 10, max = 500, step = 10),
+              numericInput("fgwc_maxiter", "Max Iterations:", value = 100, min = 10, max = 500, step = 10),
+              numericInput("fgwc_tol", "Convergence Tolerance:", value = 1e-6, min = 1e-8, max = 1e-3, step = 1e-6)
+            ),
+            
             actionButton("run_clustering", "Jalankan Clustering", class = "btn-primary"),
             br(), br(),
             
             div(class = "info-box",
               h5("Rekomendasi Metode untuk Data Distance Matrix:"),
-              p(strong("🏆 Hierarchical (Ward D2):"), "TERBAIK untuk data ini. Cocok untuk distance matrix, menghasilkan cluster yang kompak dan seimbang."),
+              p(strong("🏆 FGWC:"), "TERBAIK untuk data SOVI. Metode yang direkomendasikan paper asli, mempertimbangkan lokasi geografis dan fuzzy membership."),
+              p(strong("🥈 Hierarchical (Ward D2):"), "Sangat baik untuk data ini. Cocok untuk distance matrix, menghasilkan cluster yang kompak dan seimbang."),
               p(strong("⭐ K-Medoids (PAM):"), "Sangat baik untuk data dengan outliers. Menggunakan medoids (titik tengah) yang lebih robust."),
               p(strong("🔍 DBSCAN:"), "Baik untuk mendeteksi cluster dengan bentuk tidak beraturan dan mengidentifikasi noise/outliers."),
               p(strong("⚡ K-Means:"), "Cepat tapi kurang optimal untuk distance matrix. Memerlukan transformasi MDS terlebih dahulu."),
