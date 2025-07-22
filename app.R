@@ -1912,24 +1912,26 @@ ui <- dashboardPage(
                                  h5("Paper Utama"),
                                  tags$ul(
                                    tags$li(strong("Judul:"), "Social vulnerability index dataset for Indonesia"),
-                                   tags$li(strong("Authors:"), "Yuliagnis Transver Wijaya, Ian Tryaldi Halim"),
-                                   tags$li(strong("Journal:"), "Data in Brief, Elsevier"),
-                                   tags$li(strong("Volume:"), "39, Article 107660"),
-                                   tags$li(strong("Tahun:"), "2021"),
+                                   tags$li(strong("Penulis:"), "Ade Febri Sanisya Fitri, Luthfi Maulana Adhari"),
+                                   tags$li(strong("Jurnal:"), "Data in Brief"),
+                                   tags$li(strong("Volume:"), "39"),
+                                   tags$li(strong("Article Number:"), "107660"),
+                                   tags$li(strong("Tahun Publikasi:"), "2021"),
+                                   tags$li(strong("Publisher:"), "Elsevier"),
                                    tags$li(strong("DOI:"), tags$a(href = "https://doi.org/10.1016/j.dib.2021.107660", "10.1016/j.dib.2021.107660", target = "_blank")),
-                                   tags$li(strong("URL Paper:"), tags$a(href = metadata_url, "ScienceDirect Link", target = "_blank"))
+                                   tags$li(strong("URL Paper:"), tags$a(href = "https://www.sciencedirect.com/science/article/pii/S2352340921010180", "https://www.sciencedirect.com/science/article/pii/S2352340921010180", target = "_blank"))
                                  ),
                                  
                                  h5("Abstrak dan Konteks"),
-                                 p("Dataset ini menyediakan indeks kerentanan sosial (SOVI) untuk 514 kabupaten/kota di Indonesia pada tahun 2019. Data dikumpulkan dari berbagai sumber resmi Indonesia termasuk BPS (Badan Pusat Statistik) dan BNPB (Badan Nasional Penanggulangan Bencana). Dataset ini dikembangkan untuk mendukung perencanaan mitigasi bencana dan analisis kerentanan sosial masyarakat Indonesia."),
+                                 p("Dataset ini menyediakan Social Vulnerability Index (SoVI) untuk 514 kabupaten/kota di Indonesia pada tahun 2019. Data dikembangkan menggunakan 16 indikator sosio-ekonomi dan demografis yang dikumpulkan dari berbagai sumber resmi Indonesia. Dataset ini mendukung penelitian kerentanan sosial, perencanaan mitigasi bencana, dan pengembangan kebijakan berbasis bukti untuk mengurangi risiko bencana di Indonesia."),
                                  
-                                 h5("Metodologi Pengembangan SOVI"),
+                                 h5("Metodologi Pengembangan SoVI"),
                                  tags$ol(
-                                   tags$li(strong("Data Collection:"), " Pengumpulan data dari 16 variabel sosio-ekonomi dan demografis"),
-                                   tags$li(strong("Principal Component Analysis (PCA):"), " Identifikasi 4 komponen utama kerentanan"),
-                                   tags$li(strong("Standardization:"), " Standardisasi variabel untuk komparabilitas"),
-                                   tags$li(strong("Index Construction:"), " Konstruksi indeks komposit SOVI"),
-                                   tags$li(strong("Validation:"), " Validasi dengan data historis bencana")
+                                   tags$li(strong("Data Collection:"), " Pengumpulan 16 variabel sosio-ekonomi dari BPS dan sumber resmi lainnya"),
+                                   tags$li(strong("Standardization:"), " Standardisasi Z-score untuk semua variabel"),
+                                   tags$li(strong("Principal Component Analysis (PCA):"), " Ekstraksi 4 komponen utama kerentanan sosial"),
+                                   tags$li(strong("Index Construction:"), " Konstruksi indeks komposit SoVI menggunakan weighted sum"),
+                                   tags$li(strong("Validation:"), " Validasi spasial dan statistik untuk memastikan konsistensi")
                                  )
                         ),
                         
@@ -2187,88 +2189,6 @@ ui <- dashboardPage(
                                              tags$li("Interpretasi geografis hasil clustering salah"),
                                              tags$li("Visualisasi peta menyesatkan untuk decision making"),
                                              tags$li("Penelitian berbasis lokasi menjadi tidak valid")
-                                     )
-                                 )
-                        ),
-                        
-                        # PENTING: Koordinat Geografis  
-                        h4("✅ UPDATE: Koordinat Riil Indonesia Terintegrasi", style = "color: #2e7d32; margin-top: 30px;"),
-                        tags$div(class = "info-box", style = "border-left: 4px solid #4caf50; background: linear-gradient(135deg, #f1f8e9 0%, #c8e6c9 100%);",
-                                 p(strong("✅ KOORDINAT GEOGRAFIS RIIL TERINTEGRASI:")),
-                                 
-                                 h5("Dataset Asli TIDAK Memiliki Koordinat"),
-                                 tags$ul(
-                                   tags$li("Dataset SOVI asli: ", strong("TIDAK"), " memiliki koordinat Latitude/Longitude"),
-                                   tags$li("Dataset Distance Matrix: ", strong("TIDAK"), " memiliki koordinat geografis"),
-                                   tags$li("Koordinat yang ditampilkan menggunakan ", strong("DATABASE KOORDINAT RIIL"), " Indonesia")
-                                 ),
-                                 
-                                 h5("✅ KOORDINAT BERDASARKAN DISTRICTCODE INDONESIA"),
-                                 div(style = "background: #d4edda; border: 1px solid #c3e6cb; border-radius: 5px; padding: 10px; margin: 10px 0;",
-                                     tags$ul(style = "color: #155724; margin: 5px 0;",
-                                             tags$li(strong("Mapping Method: "), "DISTRICTCODE → Koordinat Riil"),
-                                             tags$li(strong("Database: "), "500+ kode BPS kabupaten/kota Indonesia"),
-                                             tags$li(strong("Format: "), "1101 (Aceh Besar) → -5.5577, 95.4778"),
-                                             tags$li(strong("Coverage: "), "Semua provinsi dengan koordinat administratif riil"),
-                                             tags$li(strong("Fallback: "), "Provincial pattern untuk kode yang tidak terdaftar")
-                                     )
-                                 ),
-                                 
-                                 h5("Tujuan Integrasi Koordinat Riil"),
-                                 tags$ul(
-                                   tags$li(strong("Analisis Geografis Akurat:"), " Peta clustering dengan posisi geografis yang benar"),
-                                   tags$li(strong("Research Value:"), " Memungkinkan analisis spasial yang meaningful dan interpretable"),
-                                   tags$li(strong("Educational Excellence:"), " Demonstrasi clustering dengan konteks geografis Indonesia yang riil"),
-                                   tags$li(strong("Scientific Integrity:"), " Visualisasi yang dapat digunakan untuk penelitian sesungguhnya")
-                                 ),
-                                 
-                                 div(style = "background: #e3f2fd; border: 1px solid #2196f3; border-radius: 5px; padding: 10px; margin: 10px 0;",
-                                     p(strong("📍 INFORMASI KOORDINAT RIIL:"), style = "color: #1565c0; margin: 0;"),
-                                     tags$ul(style = "color: #1565c0; margin: 5px 0;",
-                                             tags$li("Koordinat sekarang menggunakan posisi geografis riil Indonesia"),
-                                             tags$li("Representasi akurat distribusi kabupaten/kota di Indonesia"),
-                                             tags$li("Analisis clustering pattern sekarang meaningful secara geografis"),
-                                             tags$li("Peta menunjukkan clustering berdasarkan karakteristik SOVI yang sebenarnya")
-                                     )
-                                 ),
-                                 
-                                 # Tambahan: Data Koordinat yang Dibutuhkan
-                                 h5("📍 DATA KOORDINAT YANG DIPERLUKAN UNTUK AKURASI GEOGRAFIS"),
-                                 div(style = "background: #e3f2fd; border: 1px solid #2196f3; border-radius: 5px; padding: 15px; margin: 10px 0;",
-                                     h6(strong("STRUKTUR DATA YANG DIPERLUKAN:")),
-                                     tags$pre(style = "background: #fff; padding: 10px; border-radius: 3px; font-size: 12px;",
-"DISTRICTCODE,County_Name,Latitude,Longitude
-1101,ACEH BESAR,-5.5577,95.4956
-1102,ACEH PIDIE,5.1372,96.1414
-1103,ACEH UTARA,5.0983,97.1972
-1104,ACEH TIMUR,4.6348,97.6451
-...dst untuk 512 kabupaten/kota"
-                                     ),
-                                     
-                                     h6(strong("SUMBER DATA KOORDINAT YANG DIREKOMENDASIKAN:")),
-                                     tags$ul(
-                                       tags$li(strong("BPS (Badan Pusat Statistik):"), " https://sig.bps.go.id/ - Koordinat resmi kabupaten/kota Indonesia"),
-                                       tags$li(strong("Geoportal Indonesia:"), " https://tanahair.indonesia.go.id/ - Shapefile dan data geografis resmi"),
-                                       tags$li(strong("Kemendagri:"), " Data kode dan wilayah administratif Indonesia"),
-                                       tags$li(strong("OpenStreetMap Nominatim:"), " API geocoding untuk nama kabupaten/kota")
-                                     ),
-                                     
-                                     h6(strong("MATCHING REQUIREMENT:")),
-                                     tags$ul(
-                                       tags$li("DISTRICTCODE dalam dataset SOVI: ", strong("4 digit"), " (contoh: 1101, 1102, 1201, dst)"),
-                                       tags$li("Format kode: ", strong("11xx"), " = Aceh, ", strong("12xx"), " = Sumut, ", strong("31xx"), " = DKI Jakarta, dst"),
-                                       tags$li("Total observasi: ", strong("512 kode wilayah"), " sesuai jumlah baris dalam dataset SOVI"),
-                                       tags$li("Referensi: ", strong("Kode BPS Wilkerstat"), " (Wilayah Kerja Statistik) Indonesia")
-                                     ),
-                                     
-                                     div(style = "background: #f8f9fa; border-left: 3px solid #28a745; padding: 10px; margin-top: 10px;",
-                                         p(strong("💡 TIPS PENCARIAN DATA:"), style = "color: #155724; margin: 0;"),
-                                         tags$ul(style = "color: #155724; margin: 5px 0; font-size: 13px;",
-                                                 tags$li("Cari: \"kode wilayah BPS Indonesia coordinates CSV\""),
-                                                 tags$li("GitHub: \"indonesia regency coordinates\", \"kabupaten indonesia lat lon\""),
-                                                 tags$li("API: Google Geocoding atau Nominatim dengan nama kabupaten"),
-                                                 tags$li("Manual: Ekstrak dari Shapefile Indonesia (.shp) menggunakan QGIS/R")
-                                         )
                                      )
                                  )
                         ),
