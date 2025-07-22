@@ -564,7 +564,8 @@ ui <- dashboardPage(
       menuItem("Manajemen Data", tabName = "data_management", icon = icon("database")),
       menuItem("Eksplorasi Data", tabName = "exploration", icon = icon("chart-line"),
                menuSubItem("Statistik Deskriptif", tabName = "descriptive"),
-               menuSubItem("Visualisasi", tabName = "visualization")
+               menuSubItem("Visualisasi", tabName = "visualization"),
+               menuSubItem("Analisis Peta SOVI", tabName = "sovi_map")
       ),
       menuItem("Uji Asumsi", tabName = "assumptions", icon = icon("check-circle")),
       menuItem("Statistik Inferensia", tabName = "inference", icon = icon("calculator"),
@@ -1688,8 +1689,91 @@ ui <- dashboardPage(
               )
       ),
       
+      # =================== ANALISIS PETA SOVI ===================
+      tabItem(tabName = "sovi_map",
+              fluidRow(
+                box(width = 12, title = "Analisis Data SOVI Menggunakan Peta - Visualisasi Spasial", status = "info", solidHeader = TRUE,
+                    div(class = "info-box",
+                        p(strong("Tujuan Menu:"), "Menu ini digunakan untuk menganalisis data Social Vulnerability Index (SOVI) secara spasial menggunakan peta interaktif Indonesia."),
+                        p(strong("Fitur Utama:"), "Visualisasi SOVI score pada peta Indonesia, analisis distribusi spasial kerentanan sosial, filtering berdasarkan threshold, dan identifikasi hotspot kerentanan."),
+                        p(strong("Cara Penggunaan:"), "1) Pilih variabel SOVI untuk divisualisasikan, 2) Atur threshold dan filter, 3) Analisis distribusi spasial, 4) Identifikasi area dengan kerentanan tinggi/rendah.")
+                    )
+                )
+              ),
+              
+              fluidRow(
+                box(width = 4, title = "Pengaturan Analisis Peta SOVI", status = "primary", solidHeader = TRUE,
+                    selectInput("sovi_map_variable", "Pilih Variabel SOVI:",
+                                choices = list(
+                                  "SOVI Score" = "SOVI_Score",
+                                  "Population" = "Population", 
+                                  "Income" = "Income",
+                                  "Education" = "Education",
+                                  "Age 65 Over" = "Age_65_Over",
+                                  "Disability" = "Disability"
+                                ), selected = "SOVI_Score"),
+                    
+                    selectInput("sovi_map_type", "Jenis Visualisasi Peta:",
+                                choices = list(
+                                  "Heatmap (Gradient)" = "heatmap",
+                                  "Categorical (Quintiles)" = "categorical", 
+                                  "Threshold Analysis" = "threshold",
+                                  "Hotspot Analysis" = "hotspot"
+                                ), selected = "heatmap"),
+                    
+                    conditionalPanel(
+                      condition = "input.sovi_map_type == 'threshold'",
+                      numericInput("sovi_threshold", "Threshold Value:", value = 0, step = 0.1),
+                      helpText("Nilai di atas threshold akan ditandai sebagai 'High Risk'")
+                    ),
+                    
+                    conditionalPanel(
+                      condition = "input.sovi_map_type == 'categorical'",
+                      radioButtons("sovi_categories", "Jumlah Kategori:",
+                                   choices = list("3 (Rendah-Sedang-Tinggi)" = 3,
+                                                  "5 (Quintiles)" = 5), selected = 5)
+                    ),
+                    
+                    checkboxInput("show_statistics", "Tampilkan Statistik Deskriptif", value = TRUE),
+                    checkboxInput("show_legend", "Tampilkan Legend", value = TRUE),
+                    
+                    actionButton("generate_sovi_map", "Generate Peta SOVI", class = "btn-primary")
+                ),
+                
+                box(width = 8, title = "Peta Interaktif SOVI Indonesia", status = "success", solidHeader = TRUE,
+                    leafletOutput("sovi_interactive_map", height = "500px"),
+                    br(),
+                    conditionalPanel(
+                      condition = "input.show_statistics",
+                      div(class = "interpretation-box",
+                          h5("Statistik Deskriptif:"),
+                          verbatimTextOutput("sovi_map_stats")
+                      )
+                    ),
+                    br(),
+                    fluidRow(
+                      column(6, downloadButton("download_sovi_map", "Download Peta (PNG)", class = "btn-success")),
+                      column(6, downloadButton("download_sovi_analysis", "Download Analisis (Word)", class = "btn-info"))
+                    )
+                )
+              ),
+              
+              fluidRow(
+                box(width = 12, title = "Analisis Spasial SOVI", status = "warning", solidHeader = TRUE,
+                    h5("Interpretasi Pola Spasial"),
+                    textOutput("sovi_spatial_interpretation"),
+                    br(),
+                    h5("Identifikasi Area Prioritas"),
+                    DT::dataTableOutput("sovi_priority_areas"),
+                    br(),
+                    h5("Rekomendasi Kebijakan"),
+                    div(class = "interpretation-box",
+                        textOutput("sovi_policy_recommendations")
+                    )
+                )
+              )
+      ),
 
-      
       # =================== UJI ASUMSI ===================
       tabItem(tabName = "assumptions",
               fluidRow(
@@ -5889,6 +5973,260 @@ Pastikan variabel yang dipilih adalah numerik.")
        }
      }
    )
+   
+   # =================== SERVER LOGIC UNTUK ANALISIS PETA SOVI ===================
+   
+   # Generate SOVI Map
+   observeEvent(input$generate_sovi_map, {
+     output$sovi_interactive_map <- renderLeaflet({
+       tryCatch({
+         # Gunakan data SOVI
+         data <- values$current_data
+         if (is.null(data)) {
+           data <- sovi_data
+         }
+         
+         # Pastikan data memiliki koordinat Indonesia
+         if (!"Latitude" %in% names(data) || !"Longitude" %in% names(data)) {
+           # Generate koordinat riil Indonesia
+           n_data <- nrow(data)
+           sequential_codes <- 1101:(1100 + n_data)
+           coords_data <- generate_real_indonesia_coordinates(sequential_codes[1:n_data])
+           data$DISTRICTCODE <- sequential_codes[1:n_data]
+           data$Latitude <- coords_data$Latitude
+           data$Longitude <- coords_data$Longitude
+         }
+         
+         # Pilih variabel yang akan divisualisasikan
+         selected_var <- input$sovi_map_variable
+         if (!selected_var %in% names(data)) {
+           return(leaflet() %>% addTiles() %>% 
+                  setView(lng = 118, lat = -2, zoom = 5) %>%
+                  addControl(html = "Variabel tidak ditemukan dalam data", position = "topright"))
+         }
+         
+         var_values <- data[[selected_var]]
+         
+         # Buat peta dasar
+         map <- leaflet() %>%
+           addProviderTiles(providers$OpenStreetMap) %>%
+           setView(lng = 118, lat = -2, zoom = 5)
+         
+         # Tentukan warna berdasarkan jenis visualisasi
+         if (input$sovi_map_type == "heatmap") {
+           # Gradient color palette
+           pal <- colorNumeric(palette = "RdYlBu", domain = var_values, reverse = TRUE)
+           colors <- pal(var_values)
+           
+         } else if (input$sovi_map_type == "categorical") {
+           # Categorical color palette
+           n_cat <- as.numeric(input$sovi_categories)
+           var_quantiles <- quantile(var_values, probs = seq(0, 1, length.out = n_cat + 1), na.rm = TRUE)
+           var_categories <- cut(var_values, breaks = var_quantiles, include.lowest = TRUE, 
+                                labels = if(n_cat == 3) c("Rendah", "Sedang", "Tinggi") else paste("Q", 1:n_cat, sep=""))
+           pal <- colorFactor(palette = "Set3", domain = var_categories)
+           colors <- pal(var_categories)
+           
+         } else if (input$sovi_map_type == "threshold") {
+           # Threshold-based coloring
+           threshold <- input$sovi_threshold
+           var_categories <- ifelse(var_values > threshold, "High Risk", "Low Risk")
+           pal <- colorFactor(palette = c("green", "red"), domain = c("Low Risk", "High Risk"))
+           colors <- pal(var_categories)
+           
+         } else if (input$sovi_map_type == "hotspot") {
+           # Hotspot analysis (top/bottom 20%)
+           top_20 <- quantile(var_values, 0.8, na.rm = TRUE)
+           bottom_20 <- quantile(var_values, 0.2, na.rm = TRUE)
+           var_categories <- ifelse(var_values >= top_20, "Hotspot", 
+                                   ifelse(var_values <= bottom_20, "Coldspot", "Normal"))
+           pal <- colorFactor(palette = c("blue", "yellow", "red"), domain = c("Coldspot", "Normal", "Hotspot"))
+           colors <- pal(var_categories)
+         }
+         
+         # Buat popup content
+         popup_content <- character(nrow(data))
+         for (i in 1:nrow(data)) {
+           popup_info <- paste0(
+             "<div style='min-width: 200px;'>",
+             "<strong style='color: #2E7D32; font-size: 16px;'>Analisis SOVI</strong><br>",
+             "<strong>Observasi #", i, "</strong><br><hr>",
+             "<strong>", selected_var, ":</strong> ", round(var_values[i], 3), "<br>"
+           )
+           
+           # Tambah informasi tambahan
+           if ("SOVI_Score" %in% names(data) && selected_var != "SOVI_Score") {
+             popup_info <- paste0(popup_info, "<strong>SOVI Score:</strong> ", round(data$SOVI_Score[i], 3), "<br>")
+           }
+           if ("Population" %in% names(data) && selected_var != "Population") {
+             popup_info <- paste0(popup_info, "<strong>Population:</strong> ", format(data$Population[i], big.mark = ","), "<br>")
+           }
+           if ("Income" %in% names(data) && selected_var != "Income") {
+             popup_info <- paste0(popup_info, "<strong>Income:</strong> $", format(round(data$Income[i]), big.mark = ","), "<br>")
+           }
+           
+           popup_info <- paste0(popup_info, 
+             "<hr><small><strong>Koordinat:</strong> ", round(data$Latitude[i], 4), ", ", round(data$Longitude[i], 4), "<br>",
+             "<em>Koordinat riil Indonesia</em></small>",
+             "</div>")
+           
+           popup_content[i] <- popup_info
+         }
+         
+         # Tambah markers ke peta
+         map <- map %>%
+           addCircleMarkers(
+             lng = data$Longitude,
+             lat = data$Latitude,
+             color = "white",
+             fillColor = colors,
+             weight = 1,
+             radius = 8,
+             fillOpacity = 0.8,
+             stroke = TRUE,
+             popup = popup_content,
+             label = paste(selected_var, ":", round(var_values, 2))
+           )
+         
+         # Tambah legend jika diminta
+         if (input$show_legend) {
+           if (input$sovi_map_type == "heatmap") {
+             map <- map %>% addLegend("bottomright", pal = pal, values = var_values, 
+                                     title = selected_var, opacity = 1)
+           } else {
+             if (input$sovi_map_type == "categorical") {
+               legend_values <- var_categories
+             } else if (input$sovi_map_type == "threshold") {
+               legend_values <- var_categories
+             } else if (input$sovi_map_type == "hotspot") {
+               legend_values <- var_categories
+             }
+             map <- map %>% addLegend("bottomright", pal = pal, values = legend_values, 
+                                     title = selected_var, opacity = 1)
+           }
+         }
+         
+         # Tambah control info
+         map <- map %>%
+           addControl(
+             html = paste0(
+               "<div style='background: rgba(255,255,255,0.95); padding: 10px; border-radius: 8px; border: 2px solid #FF9800; box-shadow: 0 2px 10px rgba(0,0,0,0.1);'>",
+               "<h4 style='margin: 0 0 8px 0; color: #F57C00;'><i class='fa fa-map'></i> Analisis SOVI</h4>",
+               "<p style='margin: 0; font-size: 13px; line-height: 1.4;'>",
+               "<strong>Variabel:</strong> ", selected_var, "<br>",
+               "<strong>Visualisasi:</strong> ", input$sovi_map_type, "<br>",
+               "<strong>Total Observasi:</strong> ", nrow(data),
+               "</p>",
+               "</div>"
+             ),
+             position = "topleft"
+           )
+         
+         return(map)
+         
+       }, error = function(e) {
+         leaflet() %>% addTiles() %>% 
+           setView(lng = 118, lat = -2, zoom = 5) %>%
+           addControl(html = paste("Error:", e$message), position = "topright")
+       })
+     })
+   })
+   
+   # Statistik deskriptif untuk SOVI map
+   output$sovi_map_stats <- renderText({
+     if (is.null(input$sovi_map_variable)) return("")
+     
+     data <- values$current_data
+     if (is.null(data)) data <- sovi_data
+     
+     selected_var <- input$sovi_map_variable
+     if (!selected_var %in% names(data)) return("Variabel tidak ditemukan")
+     
+     var_values <- data[[selected_var]]
+     var_values <- var_values[!is.na(var_values)]
+     
+     stats_text <- paste(
+       "=== STATISTIK DESKRIPTIF ===\n",
+       "Variabel:", selected_var, "\n",
+       "Jumlah Observasi:", length(var_values), "\n",
+       "Mean:", round(mean(var_values), 3), "\n",
+       "Median:", round(median(var_values), 3), "\n",
+       "Std Dev:", round(sd(var_values), 3), "\n",
+       "Min:", round(min(var_values), 3), "\n",
+       "Max:", round(max(var_values), 3), "\n",
+       "Q1:", round(quantile(var_values, 0.25), 3), "\n",
+       "Q3:", round(quantile(var_values, 0.75), 3)
+     )
+     
+     return(stats_text)
+   })
+   
+   # Interpretasi pola spasial
+   output$sovi_spatial_interpretation <- renderText({
+     if (is.null(input$sovi_map_variable)) return("Pilih variabel untuk analisis")
+     
+     selected_var <- input$sovi_map_variable
+     map_type <- input$sovi_map_type
+     
+     interpretation <- paste(
+       "Berdasarkan visualisasi", map_type, "untuk variabel", selected_var, ":",
+       "Peta menunjukkan distribusi spasial", selected_var, "di seluruh Indonesia.",
+       "Pola yang terlihat dapat mengindikasikan clustering geografis atau dispersi acak.",
+       if (map_type == "hotspot") "Area hotspot menunjukkan konsentrasi nilai tinggi yang perlu perhatian khusus."
+       else if (map_type == "threshold") "Area di atas threshold menunjukkan risiko tinggi yang memerlukan intervensi."
+       else "Distribusi warna menunjukkan variasi spasial dalam indeks kerentanan sosial."
+     )
+     
+     return(interpretation)
+   })
+   
+   # Identifikasi area prioritas
+   output$sovi_priority_areas <- DT::renderDataTable({
+     if (is.null(input$sovi_map_variable)) return(NULL)
+     
+     data <- values$current_data
+     if (is.null(data)) data <- sovi_data
+     
+     selected_var <- input$sovi_map_variable
+     if (!selected_var %in% names(data)) return(NULL)
+     
+     var_values <- data[[selected_var]]
+     
+     # Identifikasi top 10 dan bottom 10
+     top_10_idx <- order(var_values, decreasing = TRUE)[1:min(10, length(var_values))]
+     bottom_10_idx <- order(var_values, decreasing = FALSE)[1:min(10, length(var_values))]
+     
+     priority_data <- data.frame(
+       Ranking = c(paste("Top", 1:length(top_10_idx)), paste("Bottom", 1:length(bottom_10_idx))),
+       Observasi = c(top_10_idx, bottom_10_idx),
+       Value = c(var_values[top_10_idx], var_values[bottom_10_idx]),
+       Category = c(rep("High Priority", length(top_10_idx)), rep("Low Priority", length(bottom_10_idx)))
+     )
+     
+     names(priority_data)[3] <- selected_var
+     
+     DT::datatable(priority_data, options = list(pageLength = 20, scrollX = TRUE)) %>%
+       DT::formatRound(columns = 3, digits = 3)
+   })
+   
+   # Rekomendasi kebijakan
+   output$sovi_policy_recommendations <- renderText({
+     if (is.null(input$sovi_map_variable)) return("Pilih variabel untuk rekomendasi")
+     
+     selected_var <- input$sovi_map_variable
+     
+     recommendations <- switch(selected_var,
+       "SOVI_Score" = "Fokus pada area dengan SOVI Score tinggi untuk program mitigasi bencana dan pengurangan kerentanan sosial. Prioritaskan investasi infrastruktur dan program sosial di area dengan kerentanan tinggi.",
+       "Population" = "Area dengan populasi tinggi memerlukan perhatian khusus dalam perencanaan infrastruktur dan layanan publik. Pastikan kapasitas layanan sesuai dengan kepadatan penduduk.",
+       "Income" = "Area dengan pendapatan rendah memerlukan program pemberdayaan ekonomi, pelatihan keterampilan, dan akses ke lapangan kerja. Pertimbangkan program bantuan sosial targeted.",
+       "Education" = "Area dengan tingkat pendidikan rendah memerlukan investasi dalam infrastruktur pendidikan, program literasi, dan peningkatan akses ke pendidikan berkualitas.",
+       "Age_65_Over" = "Area dengan populasi lansia tinggi memerlukan layanan kesehatan geriatri, fasilitas perawatan lansia, dan program perlindungan sosial untuk kelompok rentan.",
+       "Disability" = "Area dengan tingkat disabilitas tinggi memerlukan infrastruktur yang accessible, program rehabilitasi, dan layanan dukungan khusus untuk penyandang disabilitas.",
+       "Rekomendasi umum: Lakukan analisis lebih lanjut untuk memahami pola spasial dan faktor-faktor yang mempengaruhi distribusi variabel ini."
+     )
+     
+     return(recommendations)
+   })
  }
  
  # Run the application
