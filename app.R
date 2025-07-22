@@ -6185,17 +6185,28 @@ Pastikan variabel yang dipilih adalah numerik.")
       
       if (is.numeric(var_values)) {
         # Statistik untuk variabel numerik
+        # Format nilai berdasarkan jenis variabel
+        format_value <- function(val) {
+          if (selected_var == "POPULATION") {
+            format(round(val), big.mark = ",")
+          } else if (selected_var == "FAMILYSIZE") {
+            paste0(round(val, 2), " persons")
+          } else {
+            paste0(round(val, 2), "%")
+          }
+        }
+        
         stats_text <- paste(
           "=== STATISTIK DESKRIPTIF ===\n",
           "Variabel:", selected_var, "\n",
           "Jumlah Observasi:", length(var_values), "\n",
-          "Mean:", round(mean(var_values), 3), "\n",
-          "Median:", round(median(var_values), 3), "\n",
-          "Std Dev:", round(sd(var_values), 3), "\n",
-          "Min:", round(min(var_values), 3), "\n",
-          "Max:", round(max(var_values), 3), "\n",
-          "Q1:", round(quantile(var_values, 0.25), 3), "\n",
-          "Q3:", round(quantile(var_values, 0.75), 3)
+          "Mean:", format_value(mean(var_values)), "\n",
+          "Median:", format_value(median(var_values)), "\n",
+          "Std Dev:", if(selected_var == "POPULATION") format(round(sd(var_values)), big.mark = ",") else paste0(round(sd(var_values), 2), if(selected_var == "FAMILYSIZE") " persons" else "%"), "\n",
+          "Min:", format_value(min(var_values)), "\n",
+          "Max:", format_value(max(var_values)), "\n",
+          "Q1:", format_value(quantile(var_values, 0.25)), "\n",
+          "Q3:", format_value(quantile(var_values, 0.75))
         )
       } else {
         # Statistik untuk variabel kategorik
